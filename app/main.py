@@ -1,16 +1,11 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
+from app.api.v1.endpoints import products
 
-app = FastAPI(title="Etiqueta ESL API")
+app = FastAPI(title="Sistema ESL API")
 
-class Item(BaseModel):
-    nome: str
-    preco: float
-
-@app.get("/")
-def read_root():
-    return {"status": "Online", "projeto": "Etiqueta ESL"}
-
-@app.post("/items/")
-def create_item(item: Item):
-    return {"message": "Item criado com sucesso", "item": item}
+# Inclusão das rotas de produtos
+app.include_router(
+    products.router, 
+    prefix="/api/v1/products", 
+    tags=["Produtos"]
+)
