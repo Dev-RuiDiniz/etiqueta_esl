@@ -1,0 +1,30 @@
+etiqueta_esl/
+├── app/
+│   ├── __init__.py
+│   ├── main.py              # Ponto de entrada da aplicação FastAPI
+│   ├── core/                # Configurações globais (segurança, variáveis de ambiente)
+│   │   ├── config.py
+│   │   └── security.py      # Implementação de JWT [cite: 45]
+│   ├── api/                 # Rotas da API (v1) [cite: 52]
+│   │   ├── __init__.py
+│   │   └── v1/
+│   │       ├── api.py       # Agrupador de rotas
+│   │       └── endpoints/
+│   │           ├── products.py  # Atualização de preços e SKUs [cite: 53]
+│   │           ├── tags.py      # Status das etiquetas e bateria [cite: 62, 65]
+│   │           └── logs.py      # Histórico de alterações [cite: 64]
+│   ├── models/              # Modelos de Banco de Dados (SQLAlchemy/Motor) [cite: 43]
+│   │   ├── product.py
+│   │   └── tag.py
+│   ├── schemas/             # Modelos de Validação (Pydantic)
+│   │   ├── product.py       # Esquema de SKU e Price [cite: 55, 56]
+│   │   └── tag.py
+│   ├── db/                  # Conexão e sessão do banco de dados
+│   │   ├── base.py
+│   │   └── session.py
+│   └── services/            # Lógica de negócio (Comunicação MQTT/HTTPS) [cite: 44]
+│       └── mqtt_handler.py
+├── tests/                   # Testes automatizados
+├── .gitignore
+├── requirements.txt
+└── README.md
