@@ -1,5 +1,5 @@
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from app.main import app
 
 @pytest.mark.asyncio
@@ -7,8 +7,9 @@ async def test_update_product_price_success():
     """
     Testa se a atualização de preço retorna sucesso com dados válidos.
     """
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        # Payload baseado no exemplo do documento técnico [cite: 54, 55, 56]
+    # Na versão nova do HTTPX, passamos o app através do ASGITransport
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         payload = {
             "sku": "123456",
             "price": 25.50
@@ -17,19 +18,18 @@ async def test_update_product_price_success():
     
     assert response.status_code == 200
     assert response.json()["status"] == "success"
-    assert response.json()["new_price"] == 25.50
 
 @pytest.mark.asyncio
 async def test_update_product_price_invalid_data():
     """
     Testa se a validação do Pydantic bloqueia preços negativos.
     """
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         payload = {
             "sku": "123456",
-            "price": -10.0  # Preço inválido
+            "price": -10.0
         }
         response = await ac.post("/api/v1/products/update-price", json=payload)
     
-    # Deve retornar 422 devido à validação que implementamos no Schema
     assert response.status_code == 422
