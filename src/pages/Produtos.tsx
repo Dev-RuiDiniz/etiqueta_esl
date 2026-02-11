@@ -6,7 +6,7 @@ function Produtos() {
       title="Produtos"
       subtitle="Resumo dos produtos vinculados às etiquetas eletrônicas."
       kpis={[
-        { label: 'Produtos com ESL', value: '2.189' },
+        { label: 'Produtos com etiqueta eletrônica', value: '2.189' },
         { label: 'Produtos sem vínculo', value: '15' }
       ]}
     />

@@ -23,8 +23,8 @@ function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarPr
         </button>
 
         <div>
-          <p className="text-muted small mb-1">Sistema</p>
-          <h1 className="h5 mb-0">{currentStore?.name ?? 'ESL Dashboard'}</h1>
+          <p className="text-muted small mb-1">Operação</p>
+          <h1 className="h5 mb-0">{currentStore?.name ?? 'Painel de Etiquetas'}</h1>
         </div>
       </div>
 

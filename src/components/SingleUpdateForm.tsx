@@ -3,7 +3,7 @@ import type { Tag } from '../types/tags';
 import { getTags } from '../services/tagsService';
 import { pollUpdateStatus, sendSinglePriceUpdate } from '../services/updatesService';
 import type { SingleUpdatePayload, UpdateStatus } from '../types/updates';
-import { formatCurrencyBRL } from '../utils/format';
+import { formatCurrencyBRL, formatShortCode } from '../utils/format';
 import UpdateStatusBadge from './UpdateStatusBadge';
 
 type SingleUpdateFormProps = {
@@ -274,11 +274,11 @@ function SingleUpdateForm({ preselectedTagId }: SingleUpdateFormProps) {
               <div className="d-flex align-items-center gap-2">
                 <UpdateStatusBadge status={submissionState.status} />
                 {isPolling ? <span className="spinner-border spinner-border-sm" role="status" aria-label="Aguardando confirmação" /> : null}
-                <span className="small text-muted">Request ID: {submissionState.requestId}</span>
+                <span className="small text-muted">Código do envio: {formatShortCode(submissionState.requestId)}</span>
               </div>
               {submissionState.status === 'FAILED' ? (
                 <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => void handleRetry()}>
-                  Reenviar
+                  Tentar novamente
                 </button>
               ) : null}
             </div>

@@ -79,7 +79,7 @@ function Historico() {
     <div className="container-fluid px-0 history-page">
       <header className="mb-4">
         <h1 className="h3 mb-1">Histórico</h1>
-        <p className="text-muted mb-0">Auditoria de alterações e atualizações enviadas às etiquetas.</p>
+        <p className="text-muted mb-0">Consulta de alterações e atualizações enviadas às etiquetas.</p>
       </header>
 
       {error ? (

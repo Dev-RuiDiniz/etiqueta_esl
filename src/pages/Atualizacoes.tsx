@@ -7,7 +7,7 @@ function AtualizacoesHub() {
     <div className="container-fluid px-0">
       <header className="mb-4">
         <h1 className="h3 mb-1">Atualizações</h1>
-        <p className="text-muted mb-0">Fluxo demonstrativo de atualização de preços em etiquetas ESL.</p>
+        <p className="text-muted mb-0">Fluxo demonstrativo de atualização de preços em etiquetas.</p>
       </header>
 
       <ul className="nav nav-tabs mb-4">

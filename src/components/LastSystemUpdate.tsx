@@ -1,19 +1,11 @@
 import type { DashboardLastUpdate } from '../types/dashboard';
+import { formatDateTimeBR } from '../utils/format';
 
 type LastSystemUpdateProps = {
   update: DashboardLastUpdate;
 };
 
 function LastSystemUpdate({ update }: LastSystemUpdateProps) {
-  const formattedDate = new Date(update.timestamp).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-
   const badgeClass = update.status === 'Online' ? 'text-bg-success' : update.status === 'Offline' ? 'text-bg-secondary' : 'text-bg-warning';
 
   return (
@@ -23,8 +15,7 @@ function LastSystemUpdate({ update }: LastSystemUpdateProps) {
           <h2 className="h6 mb-0">Última atualização do sistema</h2>
           <span className={`badge ${badgeClass}`}>{update.status}</span>
         </div>
-        <p className="mb-0">Última atualização do sistema: {formattedDate}</p>
-        <p className="small text-muted mb-0">Fonte: Simulação (mock)</p>
+        <p className="mb-0">Atualizado em: {formatDateTimeBR(update.timestamp)}</p>
       </div>
     </section>
   );

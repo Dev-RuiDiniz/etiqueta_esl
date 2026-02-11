@@ -198,3 +198,12 @@ VITE_FORCE_API_ERROR=true npm run dev
 - Abra `/etiquetas?status=OFFLINE&corridor=Corredor%203&q=arroz`.
 - Abra `/etiquetas?tagId=TAG-0001` para pré-foco e abertura do detalhe.
 - Abra `/alertas?status=RESOLVED&type=OFFLINE` e confira filtros pré-aplicados.
+
+
+### ✅ FASE 9 — Polimento para apresentação
+
+- Linguagem revisada em pt-BR nas telas de Dashboard, Etiquetas, Atualizações, Alertas e Histórico.
+- Formatação padronizada com helpers centrais (`formatDateTimeBR` e `formatCurrencyBRL`).
+- Ajustes visuais para desktop, tablet e mobile com tabelas responsivas e melhor comportamento da navegação lateral.
+- Dados demonstrativos alinhados para cenário de supermercado realista com lojas, setores e corredores consistentes entre Etiquetas, Alertas e Histórico.
+- Checklist de reunião disponível em `docs/DEMO_CHECKLIST.md`.

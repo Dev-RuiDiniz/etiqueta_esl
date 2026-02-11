@@ -99,10 +99,10 @@ function HistoryFiltersBar({ filters, validationMessage, onApply, onClear }: His
 
           <div className="col-12 col-lg-2 d-flex gap-2">
             <button type="button" className="btn btn-primary flex-fill" onClick={() => onApply(draft)}>
-              Aplicar
+              Aplicar filtros
             </button>
             <button type="button" className="btn btn-outline-secondary flex-fill" onClick={onClear}>
-              Limpar
+              Limpar filtros
             </button>
           </div>
         </div>

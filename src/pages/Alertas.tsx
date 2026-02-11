@@ -117,7 +117,7 @@ function Alertas() {
     <div className="container-fluid px-0 alerts-page">
       <header className="mb-4">
         <h1 className="h3 mb-1">Alertas</h1>
-        <p className="text-muted mb-0">Central de incidentes operacionais das etiquetas ESL.</p>
+        <p className="text-muted mb-0">Central de incidentes operacionais das etiquetas.</p>
       </header>
 
       {actionFeedback ? (
@@ -150,8 +150,8 @@ function Alertas() {
         <LoadingState variant="spinner" message="Carregando alertas..." />
       ) : filteredAlerts.length === 0 ? (
         <EmptyState
-          title="Nenhum alerta no filtro atual"
-          description="Não há incidentes pendentes para os critérios escolhidos agora."
+          title="Nenhum alerta em aberto no momento."
+          description="Não há incidentes pendentes para os critérios selecionados."
           action={
             <button className="btn btn-outline-secondary" type="button" onClick={() => updateFilters(initialFilters)}>
               Limpar filtros
