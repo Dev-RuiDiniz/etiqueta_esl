@@ -97,3 +97,11 @@ body {
     background-color: rgba(15, 23, 42, 0.35);
   }
 }
+
+.dashboard-page .card {
+  border-radius: 0.9rem;
+}
+
+.dashboard-kpi-card .display-6 {
+  line-height: 1;
+}
