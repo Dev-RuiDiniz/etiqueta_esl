@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
+import LoadingState from '../components/common/LoadingState';
 import HistoryFiltersBar from '../components/history/HistoryFiltersBar';
 import HistoryTable from '../components/history/HistoryTable';
+import useAsync from '../hooks/useAsync';
 import { useNavigate } from '../lib/router';
 import { getHistory } from '../services/historyService';
-import type { HistoryFiltersValues, HistoryItem } from '../types/history';
+import type { HistoryFiltersValues } from '../types/history';
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -28,30 +32,12 @@ function getDefaultFilters(): HistoryFiltersValues {
 }
 
 function Historico() {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [filters, setFilters] = useState<HistoryFiltersValues>(getDefaultFilters);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const loadHistory = useCallback(async () => {
-    setIsLoading(true);
-    setHasError(false);
-
-    try {
-      const response = await getHistory();
-      setHistory(response);
-    } catch {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadHistory();
-  }, [loadHistory]);
+  const { data: historyData, loading, error, run: reloadHistory } = useAsync(getHistory, []);
+  const history = useMemo(() => historyData ?? [], [historyData]);
 
   const filteredHistory = useMemo(() => {
     const startBoundary = filters.startDate ? new Date(`${filters.startDate}T00:00:00`) : null;
@@ -96,28 +82,32 @@ function Historico() {
         <p className="text-muted mb-0">Auditoria de alterações e atualizações enviadas às etiquetas.</p>
       </header>
 
-      {hasError ? (
-        <div className="alert alert-danger d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3" role="alert">
-          <span>Erro ao carregar histórico.</span>
-          <button className="btn btn-outline-danger btn-sm" type="button" onClick={() => void loadHistory()}>
-            Tentar novamente
-          </button>
-        </div>
-      ) : (
-        <>
-          <HistoryFiltersBar filters={filters} validationMessage={validationMessage} onApply={applyFilters} onClear={clearFilters} />
+      {error ? (
+        <ErrorState
+          title="Não foi possível carregar o histórico"
+          message="Tente novamente para visualizar as últimas ações da operação."
+          onRetry={() => {
+            void reloadHistory();
+          }}
+        />
+      ) : null}
 
-          {isLoading ? (
-            <div className="card border-0 shadow-sm">
-              <div className="card-body py-5 d-flex justify-content-center align-items-center gap-3">
-                <div className="spinner-border text-primary" role="status" />
-                <span>Carregando histórico...</span>
-              </div>
-            </div>
-          ) : (
-            <HistoryTable items={filteredHistory} onViewTag={(tagId) => navigate(`/etiquetas?tagId=${encodeURIComponent(tagId)}`)} />
-          )}
-        </>
+      <HistoryFiltersBar filters={filters} validationMessage={validationMessage} onApply={applyFilters} onClear={clearFilters} />
+
+      {loading ? (
+        <LoadingState variant="spinner" message="Carregando histórico..." />
+      ) : filteredHistory.length === 0 ? (
+        <EmptyState
+          title="Nenhum registro encontrado"
+          description="Não há movimentações para o período e filtros selecionados."
+          action={
+            <button className="btn btn-outline-secondary" type="button" onClick={clearFilters}>
+              Limpar filtros
+            </button>
+          }
+        />
+      ) : (
+        <HistoryTable items={filteredHistory} onViewTag={(tagId) => navigate(`/etiquetas?tagId=${encodeURIComponent(tagId)}`)} />
       )}
     </div>
   );

@@ -1,9 +1,5 @@
 import type { PriceUpdateItem, SingleUpdatePayload, SingleUpdateResponse, UpdatePollResponse } from '../types/updates';
-
-type DelayConfig = {
-  min: number;
-  max: number;
-};
+import { simulateNetwork } from './api';
 
 type StatusProbabilities = {
   fastConfirm: number;
@@ -11,25 +7,11 @@ type StatusProbabilities = {
   failed: number;
 };
 
-const SEND_DELAY: DelayConfig = { min: 400, max: 1200 };
-const ACK_FAST_DELAY: DelayConfig = { min: 1000, max: 2000 };
-const ACK_SLOW_DELAY: DelayConfig = { min: 2200, max: 3000 };
-
 const statusProbabilities: StatusProbabilities = {
   fastConfirm: 0.7,
   slowConfirm: 0.2,
   failed: 0.1
 };
-
-function wait(delayMs: number) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, delayMs);
-  });
-}
-
-function randomBetween(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
 
 function buildRequestId(prefix: string) {
   const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -52,12 +34,14 @@ function getAckScenario(): 'FAST_CONFIRM' | 'SLOW_CONFIRM' | 'FAILED' {
 
 export async function sendSinglePriceUpdate(payload: SingleUpdatePayload): Promise<SingleUpdateResponse> {
   void payload;
-  await wait(randomBetween(SEND_DELAY.min, SEND_DELAY.max));
 
-  return {
-    requestId: buildRequestId('UPD'),
-    status: 'SENT'
-  };
+  return simulateNetwork(
+    {
+      requestId: buildRequestId('UPD'),
+      status: 'SENT'
+    },
+    { minMs: 400, maxMs: 900, failRate: 0.04 }
+  );
 }
 
 export async function pollUpdateStatus(requestId: string): Promise<UpdatePollResponse> {
@@ -65,29 +49,31 @@ export async function pollUpdateStatus(requestId: string): Promise<UpdatePollRes
   const scenario = getAckScenario();
 
   if (scenario === 'SLOW_CONFIRM') {
-    await wait(randomBetween(ACK_SLOW_DELAY.min, ACK_SLOW_DELAY.max));
-    return { status: 'CONFIRMED' };
+    return simulateNetwork({ status: 'CONFIRMED' }, { minMs: 400, maxMs: 900, failRate: 0.03 });
   }
-
-  await wait(randomBetween(ACK_FAST_DELAY.min, ACK_FAST_DELAY.max));
 
   if (scenario === 'FAILED') {
-    return {
-      status: 'FAILED',
-      errorMessage: 'Falha ao confirmar atualização com a etiqueta. Tente reenviar.'
-    };
+    return simulateNetwork(
+      {
+        status: 'FAILED',
+        errorMessage: 'Falha ao confirmar atualização com a etiqueta. Tente reenviar.'
+      },
+      { minMs: 400, maxMs: 900, failRate: 0.03 }
+    );
   }
 
-  return { status: 'CONFIRMED' };
+  return simulateNetwork({ status: 'CONFIRMED' }, { minMs: 400, maxMs: 900, failRate: 0.03 });
 }
 
 export async function simulateBulkItemSend(item: PriceUpdateItem): Promise<PriceUpdateItem> {
-  await wait(randomBetween(SEND_DELAY.min, SEND_DELAY.max));
-  return {
-    ...item,
-    status: 'SENT',
-    requestId: buildRequestId('BULK')
-  };
+  return simulateNetwork(
+    {
+      ...item,
+      status: 'SENT',
+      requestId: buildRequestId('BULK')
+    },
+    { minMs: 400, maxMs: 900, failRate: 0.04 }
+  );
 }
 
 export async function simulateBulkItemAck(item: PriceUpdateItem): Promise<PriceUpdateItem> {

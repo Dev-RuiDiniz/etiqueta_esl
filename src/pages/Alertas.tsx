@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AlertFiltersBar from '../components/alerts/AlertFiltersBar';
 import AlertsTable from '../components/alerts/AlertsTable';
-import { useNavigate } from '../lib/router';
+import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
+import LoadingState from '../components/common/LoadingState';
+import useAsync from '../hooks/useAsync';
+import { useNavigate, useSearchParams } from '../lib/router';
 import { getAlerts, resolveAlert } from '../services/alertsService';
 import type { AlertItem, AlertsFiltersValues } from '../types/alerts';
 
@@ -13,32 +17,57 @@ const initialFilters: AlertsFiltersValues = {
 };
 
 function Alertas() {
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [filters, setFilters] = useState<AlertsFiltersValues>(initialFilters);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isResolvingById, setIsResolvingById] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
-  const loadAlerts = useCallback(async () => {
-    setIsLoading(true);
-    setHasError(false);
+  const {
+    data: alertsData,
+    loading,
+    error,
+    run: reloadAlerts,
+    setData: setAlerts
+  } = useAsync(getAlerts, []);
 
-    try {
-      const response = await getAlerts();
-      setAlerts(response);
-    } catch {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const alerts = useMemo(() => alertsData ?? [], [alertsData]);
 
   useEffect(() => {
-    void loadAlerts();
-  }, [loadAlerts]);
+    const type = searchParams.get('type');
+    const priority = searchParams.get('priority');
+    const status = searchParams.get('status');
+    const query = searchParams.get('q');
+
+    setFilters((current) => ({
+      ...current,
+      type: (type as AlertsFiltersValues['type']) ?? 'ALL',
+      priority: (priority as AlertsFiltersValues['priority']) ?? 'ALL',
+      status: (status as AlertsFiltersValues['status']) ?? 'OPEN',
+      query: query ?? ''
+    }));
+  }, [searchParams]);
+
+  const updateFilters = (nextFilters: AlertsFiltersValues) => {
+    setFilters(nextFilters);
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+
+    if (nextFilters.type === 'ALL') nextSearchParams.delete('type');
+    else nextSearchParams.set('type', nextFilters.type);
+
+    if (nextFilters.priority === 'ALL') nextSearchParams.delete('priority');
+    else nextSearchParams.set('priority', nextFilters.priority);
+
+    if (nextFilters.status === 'OPEN') nextSearchParams.delete('status');
+    else nextSearchParams.set('status', nextFilters.status);
+
+    if (nextFilters.query.trim()) nextSearchParams.set('q', nextFilters.query.trim());
+    else nextSearchParams.delete('q');
+
+    setSearchParams(nextSearchParams, { replace: true });
+  };
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter((alert) => {
@@ -57,31 +86,32 @@ function Alertas() {
     });
   }, [alerts, filters]);
 
-  const handleResolveAlert = useCallback(
-    async (id: string) => {
-      const target = alerts.find((alert) => alert.id === id);
+  const handleResolveAlert = async (id: string) => {
+    const target = alerts.find((alert) => alert.id === id);
 
-      if (!target || target.status === 'RESOLVED') {
-        return;
-      }
+    if (!target || target.status === 'RESOLVED') {
+      return;
+    }
 
-      setActionError(null);
-      setActionFeedback(null);
-      setIsResolvingById((current) => ({ ...current, [id]: true }));
-      setAlerts((current) => current.map((alert) => (alert.id === id ? { ...alert, status: 'RESOLVED' } : alert)));
+    setActionError(null);
+    setActionFeedback(null);
+    setIsResolvingById((current) => ({ ...current, [id]: true }));
+    setAlerts((currentAlerts) =>
+      (currentAlerts ?? []).map((alert) => (alert.id === id ? { ...alert, status: 'RESOLVED' as AlertItem['status'] } : alert))
+    );
 
-      try {
-        await resolveAlert(id);
-        setActionFeedback(`Alerta ${id} marcado como resolvido.`);
-      } catch {
-        setAlerts((current) => current.map((alert) => (alert.id === id ? { ...alert, status: 'OPEN' } : alert)));
-        setActionError('Não foi possível resolver. Tente novamente.');
-      } finally {
-        setIsResolvingById((current) => ({ ...current, [id]: false }));
-      }
-    },
-    [alerts]
-  );
+    try {
+      await resolveAlert(id);
+      setActionFeedback(`Alerta ${id} marcado como resolvido.`);
+    } catch {
+      setAlerts((currentAlerts) =>
+        (currentAlerts ?? []).map((alert) => (alert.id === id ? { ...alert, status: 'OPEN' as AlertItem['status'] } : alert))
+      );
+      setActionError('Não foi possível resolver o alerta. Tente novamente.');
+    } finally {
+      setIsResolvingById((current) => ({ ...current, [id]: false }));
+    }
+  };
 
   return (
     <div className="container-fluid px-0 alerts-page">
@@ -104,33 +134,39 @@ function Alertas() {
         </div>
       ) : null}
 
-      {hasError ? (
-        <div className="alert alert-danger d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3" role="alert">
-          <span>Erro ao carregar alertas.</span>
-          <button className="btn btn-outline-danger btn-sm" type="button" onClick={() => void loadAlerts()}>
-            Tentar novamente
-          </button>
-        </div>
-      ) : (
-        <>
-          <AlertFiltersBar filters={filters} onFilterChange={setFilters} onClearFilters={() => setFilters(initialFilters)} />
+      {error ? (
+        <ErrorState
+          title="Não foi possível carregar os alertas"
+          message="Atualize a tela para retomar o acompanhamento dos incidentes."
+          onRetry={() => {
+            void reloadAlerts();
+          }}
+        />
+      ) : null}
 
-          {isLoading ? (
-            <div className="card border-0 shadow-sm">
-              <div className="card-body py-5 d-flex justify-content-center align-items-center gap-3">
-                <div className="spinner-border text-primary" role="status" />
-                <span>Carregando alertas...</span>
-              </div>
-            </div>
-          ) : (
-            <AlertsTable
-              alerts={filteredAlerts}
-              isResolvingById={isResolvingById}
-              onResolve={handleResolveAlert}
-              onViewTag={(tagId) => navigate(`/etiquetas?tagId=${encodeURIComponent(tagId)}`)}
-            />
-          )}
-        </>
+      <AlertFiltersBar filters={filters} onFilterChange={updateFilters} onClearFilters={() => updateFilters(initialFilters)} />
+
+      {loading ? (
+        <LoadingState variant="spinner" message="Carregando alertas..." />
+      ) : filteredAlerts.length === 0 ? (
+        <EmptyState
+          title="Nenhum alerta no filtro atual"
+          description="Não há incidentes pendentes para os critérios escolhidos agora."
+          action={
+            <button className="btn btn-outline-secondary" type="button" onClick={() => updateFilters(initialFilters)}>
+              Limpar filtros
+            </button>
+          }
+        />
+      ) : (
+        <AlertsTable
+          alerts={filteredAlerts}
+          isResolvingById={isResolvingById}
+          onResolve={(alertId) => {
+            void handleResolveAlert(alertId);
+          }}
+          onViewTag={(tagId) => navigate(`/etiquetas?tagId=${encodeURIComponent(tagId)}`)}
+        />
       )}
     </div>
   );

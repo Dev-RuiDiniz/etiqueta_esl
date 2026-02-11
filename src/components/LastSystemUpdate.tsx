@@ -1,4 +1,4 @@
-import type { DashboardLastUpdate } from '../mocks/dashboard';
+import type { DashboardLastUpdate } from '../types/dashboard';
 
 type LastSystemUpdateProps = {
   update: DashboardLastUpdate;

@@ -1,31 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import KpiCard from '../components/KpiCard';
 import LastSystemUpdate from '../components/LastSystemUpdate';
-import type { DashboardSummary } from '../mocks/dashboard';
+import ErrorState from '../components/common/ErrorState';
+import useAsync from '../hooks/useAsync';
 import { getDashboardSummary } from '../services/dashboardService';
 
 function Dashboard() {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-
-  const loadDashboard = useCallback(async () => {
-    setIsLoading(true);
-    setHasError(false);
-
-    try {
-      const response = await getDashboardSummary();
-      setSummary(response);
-    } catch {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+  const { data: summary, loading: isLoading, error, run: reloadDashboard } = useAsync(getDashboardSummary, []);
 
   const kpiCards = useMemo(() => {
     if (!summary) {
@@ -67,13 +48,14 @@ function Dashboard() {
         <p className="text-muted mb-0">Visão geral do status das etiquetas e operação.</p>
       </header>
 
-      {hasError ? (
-        <div className="alert alert-danger d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3" role="alert">
-          <span>Erro ao carregar dashboard.</span>
-          <button className="btn btn-outline-danger btn-sm" type="button" onClick={() => void loadDashboard()}>
-            Tentar novamente
-          </button>
-        </div>
+      {error ? (
+        <ErrorState
+          title="Não foi possível carregar o dashboard"
+          message="Tente novamente para atualizar os indicadores operacionais."
+          onRetry={() => {
+            void reloadDashboard();
+          }}
+        />
       ) : null}
 
       <section className="row g-3 mb-4" aria-live="polite">

@@ -1,4 +1,4 @@
-import type { TagStatus } from '../mocks/tags';
+import type { TagStatus } from '../types/tags';
 
 type BadgeStatusProps = {
   status: TagStatus;

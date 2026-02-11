@@ -141,3 +141,60 @@ src/
   - clique em “Ver etiqueta” para abrir `/etiquetas` com querystring de `tagId`.
 
 > Observação: dados são simulados; integração real fica para FASE 8+.
+
+### ✅ FASE 8 — Organização e realismo (mock-first)
+
+- Núcleo de simulação central em `src/services/api.ts` com:
+  - `sleep(ms)`;
+  - `simulateNetwork(data, opts)` com delay aleatório, taxa de falha e erro padronizado (`message`, `code`, `traceId`).
+- Services por domínio (`dashboardService`, `tagsService`, `updatesService`, `alertsService`, `historyService`) padronizados para usar `simulateNetwork`.
+- Tipagens de domínio centralizadas em `src/types/` (`dashboard.ts`, `tags.ts`, `updates.ts`, `alerts.ts`, `history.ts`).
+- Mocks mantidos em `src/mocks/` e consumo das páginas feito apenas via `services/`.
+- Componentes reutilizáveis de estado de UI:
+  - `LoadingState` (spinner/skeleton);
+  - `ErrorState` (alerta com retry);
+  - `EmptyState` (mensagem vazia com ação opcional).
+- Hook `useAsync` para normalizar fluxo assíncrono (`data`, `loading`, `error`, `run`).
+- Estados padronizados aplicados nas páginas de Etiquetas, Alertas e Histórico (loading, erro e vazio).
+- Persistência de filtros por querystring em:
+  - `/etiquetas` (`status`, `category`, `corridor`, `q`, `tagId`);
+  - `/alertas` (`type`, `priority`, `status`, `q`).
+- Suporte de deep-link em Etiquetas com `tagId` para pré-selecionar e abrir detalhe automaticamente.
+
+## Variáveis de ambiente (Vite)
+
+Crie um `.env` local (opcional) com:
+
+```bash
+VITE_API_MODE=mock
+VITE_FORCE_API_ERROR=false
+```
+
+- `VITE_API_MODE`: nesta fase permanece em `mock`.
+- `VITE_FORCE_API_ERROR=true`: força falha nas chamadas mock para validar `ErrorState`.
+
+## Como testar manualmente a FASE 8
+
+1. Rodar aplicação em modo padrão:
+
+```bash
+npm run dev
+```
+
+2. Forçar erro de API para validar retries:
+
+```bash
+VITE_FORCE_API_ERROR=true npm run dev
+```
+
+3. Validar empty states:
+
+- Em `/etiquetas`, aplique filtros/busca sem correspondência.
+- Em `/alertas`, filtre por combinação sem incidentes.
+- Em `/historico`, ajuste período/SKU/EtiquetaID para não retornar eventos.
+
+4. Validar querystring:
+
+- Abra `/etiquetas?status=OFFLINE&corridor=Corredor%203&q=arroz`.
+- Abra `/etiquetas?tagId=TAG-0001` para pré-foco e abertura do detalhe.
+- Abra `/alertas?status=RESOLVED&type=OFFLINE` e confira filtros pré-aplicados.

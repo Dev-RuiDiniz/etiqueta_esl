@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Tag } from '../mocks/tags';
+import type { Tag } from '../types/tags';
 import { getTags } from '../services/tagsService';
 import { pollUpdateStatus, sendSinglePriceUpdate } from '../services/updatesService';
 import type { SingleUpdatePayload, UpdateStatus } from '../types/updates';

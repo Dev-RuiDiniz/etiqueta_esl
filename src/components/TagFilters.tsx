@@ -1,11 +1,5 @@
 import { useEffect, useState } from 'react';
-
-type TagFiltersValues = {
-  status: 'ALL' | 'ONLINE' | 'OFFLINE';
-  category: string;
-  corridor: string;
-  query: string;
-};
+import type { TagFiltersValues } from '../types/tags';
 
 type TagFiltersProps = {
   filters: TagFiltersValues;
@@ -119,5 +113,4 @@ function TagFilters({ filters, categories, corridors, onFilterChange, onClearFil
   );
 }
 
-export type { TagFiltersValues };
 export default TagFilters;

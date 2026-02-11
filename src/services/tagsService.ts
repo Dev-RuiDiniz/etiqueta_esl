@@ -1,31 +1,20 @@
-import { tagsMock, type Tag } from '../mocks/tags';
-
-const TAGS_MIN_DELAY_MS = 400;
-const TAGS_MAX_DELAY_MS = 900;
-const SHOULD_FAIL = false;
-const FAILURE_CHANCE = 0.1;
-
-function getRandomDelay() {
-  return Math.floor(Math.random() * (TAGS_MAX_DELAY_MS - TAGS_MIN_DELAY_MS + 1)) + TAGS_MIN_DELAY_MS;
-}
-
-function shouldThrowError() {
-  return SHOULD_FAIL || Math.random() < FAILURE_CHANCE;
-}
+import { tagCategories, tagCorridors, tagsMock } from '../mocks/tags';
+import type { Tag } from '../types/tags';
+import { API_MODE, simulateNetwork } from './api';
 
 export async function getTags(): Promise<Tag[]> {
-  await new Promise((resolve) => {
-    window.setTimeout(resolve, getRandomDelay());
-  });
-
-  if (shouldThrowError()) {
-    throw new Error('Erro ao carregar etiquetas');
+  if (API_MODE !== 'mock') {
+    return simulateNetwork([...tagsMock], { minMs: 400, maxMs: 900, failRate: 0.05 });
   }
 
-  return tagsMock;
+  return simulateNetwork([...tagsMock], { minMs: 400, maxMs: 900, failRate: 0.05 });
 }
 
 export async function getTagById(tagId: string): Promise<Tag | null> {
   const tags = await getTags();
   return tags.find((tag) => tag.tagId === tagId) ?? null;
+}
+
+export async function getTagFilterOptions(): Promise<{ categories: string[]; corridors: string[] }> {
+  return simulateNetwork({ categories: tagCategories, corridors: tagCorridors }, { minMs: 400, maxMs: 700, failRate: 0.03 });
 }
