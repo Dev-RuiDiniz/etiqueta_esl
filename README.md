@@ -96,3 +96,26 @@ src/
   - use “Retry” para itens com falha.
 
 > Observação: fluxo é simulado; integração real com API ficará para FASE 8.
+
+
+
+### ✅ FASE 6 — Alertas operacionais (mock)
+
+- Página `/alertas` com tabela responsiva de incidentes (bateria baixa, etiqueta offline e falha de atualização).
+- Barra de filtros front-only por tipo, prioridade, status e busca por EtiquetaID/SKU/Produto.
+- Badges visuais de prioridade e status para leitura rápida da operação.
+- Ação “Marcar como resolvido” com atualização otimista no estado local e feedback visual de sucesso/erro.
+- Estado de loading com spinner, estado de erro com retry e estado vazio com mensagem orientativa.
+- Serviço fake `alertsService` (Promise + delay) e base de 36 alertas mockados realistas.
+- Integração com FASE 3: botão “Ver etiqueta” em alertas abre `/etiquetas?tagId=...` para busca pré-preenchida.
+
+## Como testar a FASE 6
+
+- Acesse `/alertas`:
+  - valide o carregamento inicial dos alertas;
+  - use os filtros Tipo/Prioridade/Status e o campo de busca;
+  - clique em “Marcar como resolvido” em um alerta aberto e confirme a troca do badge para “Resolvido”;
+  - clique em “Ver etiqueta” para navegar para `/etiquetas` com querystring de `tagId` aplicada;
+  - use “Limpar filtros” e confira o retorno ao estado padrão (Abertos).
+
+> Observação: persistência real e integração backend ficam para FASE 8+.

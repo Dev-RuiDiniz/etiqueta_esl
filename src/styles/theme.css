@@ -138,3 +138,11 @@ body {
     max-height: calc(100vh - 1rem);
   }
 }
+
+.alerts-page .card {
+  border-radius: 0.9rem;
+}
+
+.alerts-open-row {
+  --bs-table-bg: #f8fbff;
+}

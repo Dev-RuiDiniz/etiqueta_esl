@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from '../lib/router';
 import TagDetailsModal from '../components/TagDetailsModal';
 import TagFilters, { type TagFiltersValues } from '../components/TagFilters';
 import TagTable from '../components/TagTable';
@@ -17,6 +18,7 @@ function Etiquetas() {
   const [filters, setFilters] = useState<TagFiltersValues>(initialFilters);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchParams] = useSearchParams();
   const [hasError, setHasError] = useState(false);
 
   const loadTags = useCallback(async () => {
@@ -36,6 +38,22 @@ function Etiquetas() {
   useEffect(() => {
     void loadTags();
   }, [loadTags]);
+
+  useEffect(() => {
+    const tagIdFromQuery = searchParams.get('tagId');
+
+    if (!tagIdFromQuery) {
+      return;
+    }
+
+    setFilters((current) => {
+      if (current.query === tagIdFromQuery) {
+        return current;
+      }
+
+      return { ...current, query: tagIdFromQuery };
+    });
+  }, [searchParams]);
 
   const filteredTags = useMemo(() => {
     return tags.filter((tag) => {
