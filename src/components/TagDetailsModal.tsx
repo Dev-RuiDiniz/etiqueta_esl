@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { Tag } from '../mocks/tags';
+import { useNavigate } from '../lib/router';
 import { formatCurrencyBRL, formatDateTimeBR } from '../utils/format';
 import BadgeStatus from './BadgeStatus';
 import BatteryBadge from './BatteryBadge';
@@ -12,6 +13,8 @@ type TagDetailsModalProps = {
 };
 
 function TagDetailsModal({ isOpen, tag, onClose }: TagDetailsModalProps) {
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -110,8 +113,15 @@ function TagDetailsModal({ isOpen, tag, onClose }: TagDetailsModalProps) {
           <button type="button" className="btn btn-outline-secondary" onClick={onClose}>
             Fechar
           </button>
-          <button type="button" className="btn btn-primary" disabled>
-            Atualizar preço (Fase 5)
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              onClose();
+              navigate(`/atualizacoes/individual?tagId=${encodeURIComponent(tag.tagId)}`);
+            }}
+          >
+            Atualizar preço
           </button>
         </div>
       </section>
