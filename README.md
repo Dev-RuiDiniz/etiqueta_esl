@@ -119,3 +119,25 @@ src/
   - use “Limpar filtros” e confira o retorno ao estado padrão (Abertos).
 
 > Observação: persistência real e integração backend ficam para FASE 8+.
+
+### ✅ FASE 7 — Histórico (auditoria e rastreabilidade)
+
+- Página `/historico` com tabela responsiva de eventos: alteração de preço, envio de atualização, confirmação e falha.
+- Filtros front-only por período (data inicial/final), SKU, EtiquetaID e status.
+- Estados visuais de loading (spinner), erro com retry e vazio (“Nenhum registro encontrado”).
+- Badges padronizados para status (`Enviado`, `Confirmado`, `Falha`) e origem (`Manual`, `Lote`, `Sistema (mock)`).
+- Serviço fake `historyService` com Promise + delay e base de histórico mockada com dezenas de eventos distribuídos nos últimos 30 dias.
+- Formatação pt-BR para data/hora e moeda (R$).
+- Integração com FASE 3: ação “Ver etiqueta” navega para `/etiquetas?tagId=...`.
+
+## Como testar a FASE 7
+
+- Acesse `/historico`:
+  - confira o carregamento inicial e a tabela de registros;
+  - aplique filtros por data e SKU;
+  - filtre por status e EtiquetaID;
+  - teste a validação com data inicial maior que data final;
+  - use “Limpar” para resetar os filtros;
+  - clique em “Ver etiqueta” para abrir `/etiquetas` com querystring de `tagId`.
+
+> Observação: dados são simulados; integração real fica para FASE 8+.
