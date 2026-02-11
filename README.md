@@ -61,7 +61,16 @@ src/
 - Mock service com Promise + delay para carregar dados e simular comportamento real.
 - Estados de loading, erro e vazio tratados para demo.
 
+### ✅ FASE 4 — Preview visual da etiqueta (e-paper)
+
+- Componente reutilizável `PreviewEtiqueta` para simular etiqueta ESL em tons de cinza/preto.
+- Exibição de nome do produto (máx. 2 linhas), preço em destaque, unidade, SKU e infos adicionais.
+- Suporte a promoção mockada com selo (ex.: `OFERTA`) e texto “De R$ X por R$ Y”.
+- Integração no modal de detalhes em `/etiquetas`, com layout responsivo (coluna lateral no desktop e empilhado no mobile).
+- Novos campos no mock de tags: `unitLabel` e `promotion`.
+
 ## Próximas fases
 
-- FASE 4: preview visual real da etiqueta.
 - FASE 5: fluxo operacional para atualização de preço.
+
+> Nota: interações de atualização de preço serão implementadas na FASE 5.

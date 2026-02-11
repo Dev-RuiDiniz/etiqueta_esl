@@ -3,6 +3,7 @@ import type { Tag } from '../mocks/tags';
 import { formatCurrencyBRL, formatDateTimeBR } from '../utils/format';
 import BadgeStatus from './BadgeStatus';
 import BatteryBadge from './BatteryBadge';
+import PreviewEtiqueta from './PreviewEtiqueta';
 
 type TagDetailsModalProps = {
   isOpen: boolean;
@@ -52,40 +53,55 @@ function TagDetailsModal({ isOpen, tag, onClose }: TagDetailsModalProps) {
         </div>
 
         <div className="card-body">
-          <dl className="row mb-0">
-            <dt className="col-sm-4">EtiquetaID</dt>
-            <dd className="col-sm-8">{tag.tagId}</dd>
+          <div className="row g-4">
+            <div className="col-12 col-lg-6">
+              <dl className="row mb-0">
+                <dt className="col-sm-4">EtiquetaID</dt>
+                <dd className="col-sm-8">{tag.tagId}</dd>
 
-            <dt className="col-sm-4">SKU</dt>
-            <dd className="col-sm-8">{tag.sku}</dd>
+                <dt className="col-sm-4">SKU</dt>
+                <dd className="col-sm-8">{tag.sku}</dd>
 
-            <dt className="col-sm-4">Produto</dt>
-            <dd className="col-sm-8">{tag.productName}</dd>
+                <dt className="col-sm-4">Produto</dt>
+                <dd className="col-sm-8">{tag.productName}</dd>
 
-            <dt className="col-sm-4">Preço</dt>
-            <dd className="col-sm-8">{formatCurrencyBRL(tag.price)}</dd>
+                <dt className="col-sm-4">Preço</dt>
+                <dd className="col-sm-8">{formatCurrencyBRL(tag.price)}</dd>
 
-            <dt className="col-sm-4">Status</dt>
-            <dd className="col-sm-8">
-              <BadgeStatus status={tag.status} />
-            </dd>
+                <dt className="col-sm-4">Status</dt>
+                <dd className="col-sm-8">
+                  <BadgeStatus status={tag.status} />
+                </dd>
 
-            <dt className="col-sm-4">Bateria</dt>
-            <dd className="col-sm-8">
-              <BatteryBadge battery={tag.battery} />
-            </dd>
+                <dt className="col-sm-4">Bateria</dt>
+                <dd className="col-sm-8">
+                  <BatteryBadge battery={tag.battery} />
+                </dd>
 
-            <dt className="col-sm-4">Localização</dt>
-            <dd className="col-sm-8">{tag.location}</dd>
+                <dt className="col-sm-4">Localização</dt>
+                <dd className="col-sm-8">{tag.location}</dd>
 
-            <dt className="col-sm-4">Última atualização</dt>
-            <dd className="col-sm-8">{formatDateTimeBR(tag.lastUpdate)}</dd>
-          </dl>
+                <dt className="col-sm-4">Última atualização</dt>
+                <dd className="col-sm-8">{formatDateTimeBR(tag.lastUpdate)}</dd>
+              </dl>
+            </div>
 
-          <div className="card bg-light-subtle border mt-4">
-            <div className="card-body">
-              <h3 className="h6">Preview da etiqueta (Fase 4)</h3>
-              <p className="text-muted mb-0">Espaço reservado para visualização real da ESL com layout final.</p>
+            <div className="col-12 col-lg-6">
+              <div className="card bg-light-subtle border h-100">
+                <div className="card-body d-flex flex-column">
+                  <h3 className="h6">Preview da etiqueta</h3>
+                  <div className="mt-2 d-flex justify-content-center justify-content-lg-start">
+                    <PreviewEtiqueta
+                      productName={tag.productName}
+                      price={tag.price}
+                      sku={tag.sku}
+                      unitLabel={tag.unitLabel}
+                      promotion={tag.promotion}
+                      additionalInfo={{ corridor: tag.corridor, sector: tag.category }}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
