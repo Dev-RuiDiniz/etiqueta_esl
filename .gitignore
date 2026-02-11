@@ -210,3 +210,6 @@ __marimo__/
 node_modules/
 *.tsbuildinfo
 npm-debug.log*
+
+!src/lib/
+!src/lib/**

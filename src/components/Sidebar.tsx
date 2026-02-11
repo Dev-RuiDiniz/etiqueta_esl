@@ -8,7 +8,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: '📊' },
   { to: '/etiquetas', label: 'Etiquetas', icon: '🏷️' },
   { to: '/produtos', label: 'Produtos', icon: '📦' },
-  { to: '/atualizacoes', label: 'Atualizações', icon: '🔄' },
+  { to: '/atualizacoes/individual', label: 'Atualizações', icon: '🔄' },
   { to: '/alertas', label: 'Alertas', icon: '🔔' },
   { to: '/historico', label: 'Histórico', icon: '🕘' }
 ];
