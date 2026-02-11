@@ -1,3 +1,2 @@
-export const mocks = {
-  message: 'Mock data placeholder'
-};
+export * from './status';
+export * from './stores';
