@@ -1,13 +1,13 @@
 :root {
   color: #1f2937;
-  background-color: #f8f9fa;
+  background-color: #f5f7fb;
   font-family: Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #f1f3f5;
+  background-color: #f5f7fb;
   color: #1f2937;
 }
 
@@ -16,12 +16,84 @@ body {
 }
 
 .app-shell {
-  background: linear-gradient(180deg, #f8f9fa 0%, #eef2f6 100%);
+  min-height: 100vh;
+  display: flex;
+  background: #f5f7fb;
 }
 
-.app-header,
-.app-content {
-  background-color: #ffffff;
-  border: 1px solid #dfe3e8;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+.app-sidebar {
+  width: 260px;
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+}
+
+.app-main {
+  min-width: 0;
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  min-height: 80px;
+}
+
+.app-content-area {
+  flex: 1;
+  background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+}
+
+.sidebar-link {
+  color: #334155;
+  border-radius: 0.65rem;
+  transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+  background-color: #eef4ff;
+  color: #0f172a;
+}
+
+.sidebar-link.active {
+  background-color: #2563eb !important;
+  color: #fff !important;
+}
+
+.sidebar-mobile-backdrop {
+  display: none;
+}
+
+.app-sidebar-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  max-width: calc(100vw - 3rem);
+  height: 100vh;
+  background: #fff;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.25);
+  z-index: 1055;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+}
+
+@media (max-width: 991.98px) {
+  .app-shell {
+    display: block;
+  }
+
+  .app-sidebar-mobile.show {
+    transform: translateX(0);
+  }
+
+  .sidebar-mobile-backdrop.show {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background-color: rgba(15, 23, 42, 0.35);
+  }
 }
