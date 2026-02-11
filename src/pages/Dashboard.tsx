@@ -16,7 +16,7 @@ function Dashboard() {
     try {
       const response = await getDashboardSummary();
       setSummary(response);
-    } catch (_error) {
+    } catch {
       setHasError(true);
     } finally {
       setIsLoading(false);
