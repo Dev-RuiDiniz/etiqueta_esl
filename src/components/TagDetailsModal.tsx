@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { Tag } from '../mocks/tags';
+import type { Tag } from '../types/tags';
 import { useNavigate } from '../lib/router';
 import { formatCurrencyBRL, formatDateTimeBR } from '../utils/format';
 import BadgeStatus from './BadgeStatus';

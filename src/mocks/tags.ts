@@ -1,23 +1,4 @@
-export type TagStatus = 'ONLINE' | 'OFFLINE';
-
-export type Tag = {
-  tagId: string;
-  sku: string;
-  productName: string;
-  price: number;
-  unitLabel: string;
-  promotion?: {
-    enabled: boolean;
-    fromPrice?: number;
-    label?: string;
-  };
-  status: TagStatus;
-  battery: number;
-  category: string;
-  corridor: string;
-  location: string;
-  lastUpdate: string;
-};
+import type { Tag } from '../types/tags';
 
 export const tagsMock: Tag[] = [
   {

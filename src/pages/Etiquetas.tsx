@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from '../lib/router';
+import { useEffect, useMemo, useState } from 'react';
+import EmptyState from '../components/common/EmptyState';
+import ErrorState from '../components/common/ErrorState';
+import LoadingState from '../components/common/LoadingState';
 import TagDetailsModal from '../components/TagDetailsModal';
-import TagFilters, { type TagFiltersValues } from '../components/TagFilters';
+import TagFilters from '../components/TagFilters';
 import TagTable from '../components/TagTable';
-import { tagCategories, tagCorridors, type Tag } from '../mocks/tags';
-import { getTags } from '../services/tagsService';
+import useAsync from '../hooks/useAsync';
+import { useSearchParams } from '../lib/router';
+import { getTagFilterOptions, getTags } from '../services/tagsService';
+import type { Tag, TagFiltersValues } from '../types/tags';
 
 const initialFilters: TagFiltersValues = {
   status: 'ALL',
@@ -14,46 +18,70 @@ const initialFilters: TagFiltersValues = {
 };
 
 function Etiquetas() {
-  const [tags, setTags] = useState<Tag[]>([]);
   const [filters, setFilters] = useState<TagFiltersValues>(initialFilters);
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchParams] = useSearchParams();
-  const [hasError, setHasError] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const loadTags = useCallback(async () => {
-    setIsLoading(true);
-    setHasError(false);
+  const {
+    data: tagsData,
+    loading,
+    error,
+    run: reloadTags
+  } = useAsync(getTags, []);
 
-    try {
-      const response = await getTags();
-      setTags(response);
-    } catch {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const { data: filterOptions } = useAsync(getTagFilterOptions, []);
+
+  const tags = useMemo(() => tagsData ?? [], [tagsData]);
 
   useEffect(() => {
-    void loadTags();
-  }, [loadTags]);
+    const status = searchParams.get('status') as TagFiltersValues['status'] | null;
+    const category = searchParams.get('category');
+    const corridor = searchParams.get('corridor');
+    const query = searchParams.get('q');
+    const tagId = searchParams.get('tagId');
 
-  useEffect(() => {
-    const tagIdFromQuery = searchParams.get('tagId');
+    setFilters((current) => ({
+      ...current,
+      status: status ?? 'ALL',
+      category: category ?? 'ALL',
+      corridor: corridor ?? 'ALL',
+      query: tagId ?? query ?? ''
+    }));
 
-    if (!tagIdFromQuery) {
-      return;
-    }
-
-    setFilters((current) => {
-      if (current.query === tagIdFromQuery) {
-        return current;
+    if (tagId && tags.length > 0) {
+      const target = tags.find((tag) => tag.tagId === tagId);
+      if (target) {
+        setSelectedTag(target);
       }
+    }
+  }, [searchParams, tags]);
 
-      return { ...current, query: tagIdFromQuery };
-    });
-  }, [searchParams]);
+  const updateFilters = (nextFilters: TagFiltersValues) => {
+    setFilters(nextFilters);
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+
+    if (nextFilters.status === 'ALL') nextSearchParams.delete('status');
+    else nextSearchParams.set('status', nextFilters.status);
+
+    if (nextFilters.category === 'ALL') nextSearchParams.delete('category');
+    else nextSearchParams.set('category', nextFilters.category);
+
+    if (nextFilters.corridor === 'ALL') nextSearchParams.delete('corridor');
+    else nextSearchParams.set('corridor', nextFilters.corridor);
+
+    if (nextFilters.query.trim()) nextSearchParams.set('q', nextFilters.query.trim());
+    else nextSearchParams.delete('q');
+
+    nextSearchParams.delete('tagId');
+    setSearchParams(nextSearchParams, { replace: true });
+  };
+
+  const clearFilters = () => {
+    setSelectedTag(null);
+    setFilters(initialFilters);
+    setSearchParams({}, { replace: true });
+  };
 
   const filteredTags = useMemo(() => {
     return tags.filter((tag) => {
@@ -79,25 +107,38 @@ function Etiquetas() {
         <p className="text-muted mb-0">Visão operacional das ESL com status, bateria e localização.</p>
       </header>
 
-      {hasError ? (
-        <div className="alert alert-danger d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3" role="alert">
-          <span>Erro ao carregar etiquetas.</span>
-          <button className="btn btn-outline-danger btn-sm" type="button" onClick={() => void loadTags()}>
-            Tentar novamente
-          </button>
-        </div>
-      ) : (
-        <>
-          <TagFilters
-            filters={filters}
-            categories={tagCategories}
-            corridors={tagCorridors}
-            onFilterChange={setFilters}
-            onClearFilters={() => setFilters(initialFilters)}
-          />
+      {error ? (
+        <ErrorState
+          title="Não foi possível carregar as etiquetas"
+          message="Verifique sua conexão e tente novamente para continuar o monitoramento."
+          onRetry={() => {
+            void reloadTags();
+          }}
+        />
+      ) : null}
 
-          <TagTable tags={filteredTags} isLoading={isLoading} onViewDetails={setSelectedTag} />
-        </>
+      <TagFilters
+        filters={filters}
+        categories={filterOptions?.categories ?? []}
+        corridors={filterOptions?.corridors ?? []}
+        onFilterChange={updateFilters}
+        onClearFilters={clearFilters}
+      />
+
+      {loading ? (
+        <LoadingState variant="skeleton" lines={8} />
+      ) : filteredTags.length === 0 ? (
+        <EmptyState
+          title="Nenhuma etiqueta encontrada"
+          description="Tente ajustar os filtros para localizar etiquetas com mais facilidade."
+          action={
+            <button className="btn btn-outline-secondary" type="button" onClick={clearFilters}>
+              Limpar filtros
+            </button>
+          }
+        />
+      ) : (
+        <TagTable tags={filteredTags} onViewDetails={setSelectedTag} />
       )}
 
       <TagDetailsModal isOpen={Boolean(selectedTag)} tag={selectedTag} onClose={() => setSelectedTag(null)} />
