@@ -1,209 +1,411 @@
 # Front-End ESL (MVP Visual)
 
-Projeto front-end em React + Vite + TypeScript com foco em operação de etiquetas eletrônicas (ESL), usando Bootstrap 5.
+![Build](https://img.shields.io/badge/build-passing-brightgreen)
+![Lint](https://img.shields.io/badge/lint-eslint-informational)
+![Format](https://img.shields.io/badge/format-prettier-ff69b4)
 
-## Requisitos
+Aplicação front-end para **operação de etiquetas eletrônicas de prateleira (ESL)** em ambiente de varejo.
+O sistema simula uma central operacional que permite:
 
-- Node.js LTS (recomendado: 20.x ou superior)
-- npm (normalmente já incluído com Node)
+- monitorar indicadores do parque de etiquetas;
+- consultar etiquetas com filtros avançados e preview visual;
+- enviar atualizações de preço (individual e em lote);
+- tratar alertas operacionais;
+- auditar histórico de alterações.
 
-## Como rodar
+> O projeto está em abordagem **mock-first** (dados simulados), focado em validação visual e de fluxos de negócio para MVP.
 
-```bash
-npm install
-npm run dev
-```
+---
 
-## Scripts disponíveis
+## 1) Tecnologias usadas
 
-- `npm run dev`: inicia servidor de desenvolvimento
-- `npm run build`: valida TypeScript e gera build de produção
-- `npm run preview`: visualiza build localmente
-- `npm run lint`: executa ESLint
-- `npm run format`: formata o código com Prettier
-- `npm run format:check`: valida formatação
+### Stack principal
 
-## Estrutura de pastas
+- **React 18**
+- **Vite 6**
+- **TypeScript 5**
+- **Bootstrap 5**
+- **React Router DOM 7**
+
+### Qualidade e padronização
+
+- **ESLint 9**
+- **Prettier 3**
+
+---
+
+## 2) Estrutura do projeto
+
+Visão geral das pastas principais do front-end:
 
 ```text
 src/
-  components/
-  layouts/
-  lib/
-  mocks/
-  pages/
-  services/
-  styles/
-  types/
-  utils/
+  components/      # componentes reutilizáveis (tabelas, badges, estados de UI, modais)
+  hooks/           # hooks compartilhados (ex.: useAsync)
+  layouts/         # layout base da aplicação (sidebar + topbar)
+  lib/             # configuração de roteamento
+  mocks/           # massa de dados simulada por domínio
+  pages/           # telas principais (dashboard, etiquetas, atualizações, alertas, histórico)
+  services/        # serviços de acesso a dados mockados/simulação de rede
+  styles/          # estilos globais e específicos de componentes
+  types/           # contratos TypeScript por domínio
+  utils/           # helpers utilitários (formatação, etc.)
 ```
 
-## O que já está completo
+### Onde estão os elementos-chave
 
-### ✅ FASE 1 — Estrutura base
+- **Serviços simulados:** `src/services/`
+- **Mocks/base fake:** `src/mocks/`
+- **Tipos de domínio:** `src/types/`
+- **Rotas/telas principais:** `src/lib/router.ts` e `src/pages/`
 
-- Rotas principais com React Router.
-- AppLayout com Sidebar e Topbar.
-- Páginas iniciais em placeholder para os módulos.
-- Navegação responsiva com menu mobile.
+---
 
-### ✅ FASE 2 — Dashboard operacional (mock)
+## 3) Instalação do ambiente
 
-- KPIs com dados mockados.
-- Estados de loading com skeleton.
-- Estado de erro com ação de retry.
-- Blocos de status por corredor e última atualização.
+### Pré-requisitos
 
-### ✅ FASE 3 — Tela de Etiquetas (core)
+- **Node.js LTS** (recomendado: 20.x+)
+- **npm**
 
-- Página `/etiquetas` com header operacional.
-- Barra de filtros por status, categoria, corredor e busca por SKU/Produto/EtiquetaID.
-- Tabela responsiva de etiquetas com badges de status e bateria.
-- Modal de detalhes com dados completos e preview da etiqueta.
-- Mock service com Promise + delay para carregar dados e simular comportamento real.
-- Estados de loading, erro e vazio tratados para demo.
+### Passo a passo
 
-### ✅ FASE 4 — Preview visual da etiqueta (e-paper)
+1. Clonar o repositório
 
-- Componente reutilizável `PreviewEtiqueta` para simular etiqueta ESL em tons de cinza/preto.
-- Exibição de nome do produto (máx. 2 linhas), preço em destaque, unidade, SKU e infos adicionais.
-- Suporte a promoção mockada com selo (ex.: `OFERTA`) e texto “De R$ X por R$ Y”.
-- Integração no modal de detalhes em `/etiquetas`, com layout responsivo.
-- Novos campos no mock de tags: `unitLabel` e `promotion`.
+```bash
+git clone <url-do-repositorio>
+cd etiqueta_esl
+```
 
-### ✅ FASE 5 — Atualização de preço (fluxo demonstrativo)
+2. Instalar dependências
 
-- Hub de atualização em `/atualizacoes` com abas internas e subrotas:
+```bash
+npm install
+```
+
+3. Rodar ambiente de desenvolvimento
+
+```bash
+npm run dev
+```
+
+4. Gerar build de produção
+
+```bash
+npm run build
+```
+
+5. Visualizar build localmente
+
+```bash
+npm run preview
+```
+
+### Scripts úteis
+
+- `npm run dev` — inicia servidor de desenvolvimento
+- `npm run build` — valida TypeScript e gera build
+- `npm run preview` — serve build local para validação
+- `npm run lint` — checagem de qualidade com ESLint
+- `npm run format` — formata código com Prettier
+- `npm run format:check` — valida formatação
+
+---
+
+## 4) Funcionalidades e fases implementadas
+
+## FASE 1 — Layout e navegação
+
+**Objetivo:** estabelecer a fundação da aplicação e navegação entre módulos.
+
+**Implementado:**
+
+- roteamento principal com React Router;
+- `AppLayout` com **Sidebar + Topbar**;
+- páginas base para os módulos: `/dashboard`, `/etiquetas`, `/produtos`, `/atualizacoes`, `/alertas`, `/historico`;
+- comportamento responsivo com menu mobile.
+
+**Componentes/features adicionados:**
+
+- `AppLayout`, `Sidebar`, `Topbar`;
+- estrutura inicial de páginas para evolução incremental por fase.
+
+### FASE 2 — Dashboard operacional
+
+**Objetivo:** oferecer visão executiva rápida da operação ESL.
+
+**Implementado:**
+
+- KPIs mockados no dashboard;
+- card de última atualização do sistema;
+- visão resumida por corredor;
+- estados de carregamento (skeleton/spinner), erro (retry) e sucesso.
+
+**Componentes/features adicionados:**
+
+- `KpiCard`, `LastSystemUpdate`;
+- integração com `dashboardService` (mock).
+
+### FASE 3 — Tela de Etiquetas (core)
+
+**Objetivo:** permitir consulta operacional detalhada das etiquetas.
+
+**Implementado:**
+
+- tela `/etiquetas` com header operacional;
+- filtros por status, categoria, corredor e busca textual;
+- tabela de etiquetas com badges de status e bateria;
+- modal de detalhes da etiqueta;
+- tratamento de estados `loading`, `empty` e `error`.
+
+**Componentes/features adicionados:**
+
+- `TagFilters`, `TagTable`, `TagDetailsModal`, `BadgeStatus`, `BatteryBadge`;
+- `tagsService` com delay simulado.
+
+### FASE 4 — Preview visual da etiqueta (e-paper)
+
+**Objetivo:** mostrar como a etiqueta final aparece no ponto de venda.
+
+**Implementado:**
+
+- preview visual em estilo e-paper (tons de cinza/preto);
+- exibição de nome, preço, unidade, SKU e informações auxiliares;
+- suporte a promoção mockada (selo e preço de/por);
+- integração do preview dentro do modal da tela de etiquetas.
+
+**Componentes/features adicionados:**
+
+- `PreviewEtiqueta`;
+- evolução do modelo de dados de etiquetas com campos de promoção.
+
+### FASE 5 — Atualização de preço (individual e lote)
+
+**Objetivo:** demonstrar fluxo de atualização operacional de preços.
+
+**Implementado:**
+
+- módulo `/atualizacoes` com subrotas:
   - `/atualizacoes/individual`
   - `/atualizacoes/lote`
-- Formulário de atualização individual com validação Bootstrap, envio fake e retorno visual de status (`Enviado`, `Confirmado`, `Falha`) com spinner e opção de reenviar.
-- Upload CSV fake para atualização em lote, com preview das primeiras linhas e processamento item a item.
-- Tabela de itens processados no lote com status por item e ação de retry para falhas.
-- Serviço `updatesService` simulando envio/ACK com delays realistas e probabilidade configurada (70% confirmado rápido, 20% confirmado lento, 10% falha).
-- Integração opcional da tela de etiquetas: botão “Atualizar preço” no modal navega para `/atualizacoes/individual?tagId=...` com pré-seleção automática.
+- formulário individual com validação e feedback de status;
+- upload e parsing de CSV para fluxo em lote;
+- processamento item a item com status e retry por linha;
+- navegação contextual a partir de etiquetas (pré-seleção por `tagId`).
 
-## Como testar a FASE 5
+**Componentes/features adicionados:**
 
-- Acesse `/atualizacoes/individual`:
-  - selecione uma etiqueta,
-  - informe novo preço,
-  - envie e acompanhe a transição `Enviado → Confirmado/Falha`;
-  - em caso de falha, use “Reenviar”.
-- Acesse `/atualizacoes/lote`:
-  - selecione um CSV (ex.: `sku;price;tagId` ou `tagId;price`),
-  - clique em “Processar arquivo” para ver a prévia,
-  - clique em “Enviar atualizações” e acompanhe o status de cada item,
-  - use “Retry” para itens com falha.
+- `SingleUpdateForm`, `BulkUpdateUploader`, `BulkUpdateTable`, `UpdateStatusBadge`;
+- `updatesService` com confirmação/falha simulada.
 
-> Observação: fluxo é simulado; integração real com API ficará para FASE 8.
+### FASE 6 — Alertas operacionais
 
+**Objetivo:** centralizar incidentes e permitir ação rápida da operação.
 
+**Implementado:**
 
-### ✅ FASE 6 — Alertas operacionais (mock)
+- tela `/alertas` com listagem de incidentes;
+- filtros por tipo, prioridade, status e busca;
+- ação “Marcar como resolvido” com feedback visual;
+- acesso rápido para etiqueta relacionada (`/etiquetas?tagId=...`);
+- estados padrão de loading/erro/vazio.
 
-- Página `/alertas` com tabela responsiva de incidentes (bateria baixa, etiqueta offline e falha de atualização).
-- Barra de filtros front-only por tipo, prioridade, status e busca por EtiquetaID/SKU/Produto.
-- Badges visuais de prioridade e status para leitura rápida da operação.
-- Ação “Marcar como resolvido” com atualização otimista no estado local e feedback visual de sucesso/erro.
-- Estado de loading com spinner, estado de erro com retry e estado vazio com mensagem orientativa.
-- Serviço fake `alertsService` (Promise + delay) e base de 36 alertas mockados realistas.
-- Integração com FASE 3: botão “Ver etiqueta” em alertas abre `/etiquetas?tagId=...` para busca pré-preenchida.
+**Componentes/features adicionados:**
 
-## Como testar a FASE 6
+- `AlertFiltersBar`, `AlertsTable` e badges de tipo/prioridade/status;
+- `alertsService` com base mock realista.
 
-- Acesse `/alertas`:
-  - valide o carregamento inicial dos alertas;
-  - use os filtros Tipo/Prioridade/Status e o campo de busca;
-  - clique em “Marcar como resolvido” em um alerta aberto e confirme a troca do badge para “Resolvido”;
-  - clique em “Ver etiqueta” para navegar para `/etiquetas` com querystring de `tagId` aplicada;
-  - use “Limpar filtros” e confira o retorno ao estado padrão (Abertos).
+### FASE 7 — Histórico (auditoria)
 
-> Observação: persistência real e integração backend ficam para FASE 8+.
+**Objetivo:** garantir rastreabilidade das alterações e eventos.
 
-### ✅ FASE 7 — Histórico (auditoria e rastreabilidade)
+**Implementado:**
 
-- Página `/historico` com tabela responsiva de eventos: alteração de preço, envio de atualização, confirmação e falha.
-- Filtros front-only por período (data inicial/final), SKU, EtiquetaID e status.
-- Estados visuais de loading (spinner), erro com retry e vazio (“Nenhum registro encontrado”).
-- Badges padronizados para status (`Enviado`, `Confirmado`, `Falha`) e origem (`Manual`, `Lote`, `Sistema (mock)`).
-- Serviço fake `historyService` com Promise + delay e base de histórico mockada com dezenas de eventos distribuídos nos últimos 30 dias.
-- Formatação pt-BR para data/hora e moeda (R$).
-- Integração com FASE 3: ação “Ver etiqueta” navega para `/etiquetas?tagId=...`.
+- tela `/historico` com eventos operacionais;
+- filtros por período, SKU, etiqueta e status;
+- exibição de origem (manual/lote/sistema);
+- formatação pt-BR de data/hora e moeda;
+- navegação de contexto para etiqueta.
 
-## Como testar a FASE 7
+**Componentes/features adicionados:**
 
-- Acesse `/historico`:
-  - confira o carregamento inicial e a tabela de registros;
-  - aplique filtros por data e SKU;
-  - filtre por status e EtiquetaID;
-  - teste a validação com data inicial maior que data final;
-  - use “Limpar” para resetar os filtros;
-  - clique em “Ver etiqueta” para abrir `/etiquetas` com querystring de `tagId`.
+- `HistoryFiltersBar`, `HistoryTable`, badges de status e origem;
+- `historyService` com dataset simulado.
 
-> Observação: dados são simulados; integração real fica para FASE 8+.
+### FASE 8 — Organização e realismo (mock-first)
 
-### ✅ FASE 8 — Organização e realismo (mock-first)
+**Objetivo:** padronizar arquitetura de serviços e estados de UI.
 
-- Núcleo de simulação central em `src/services/api.ts` com:
-  - `sleep(ms)`;
-  - `simulateNetwork(data, opts)` com delay aleatório, taxa de falha e erro padronizado (`message`, `code`, `traceId`).
-- Services por domínio (`dashboardService`, `tagsService`, `updatesService`, `alertsService`, `historyService`) padronizados para usar `simulateNetwork`.
-- Tipagens de domínio centralizadas em `src/types/` (`dashboard.ts`, `tags.ts`, `updates.ts`, `alerts.ts`, `history.ts`).
-- Mocks mantidos em `src/mocks/` e consumo das páginas feito apenas via `services/`.
-- Componentes reutilizáveis de estado de UI:
-  - `LoadingState` (spinner/skeleton);
-  - `ErrorState` (alerta com retry);
-  - `EmptyState` (mensagem vazia com ação opcional).
-- Hook `useAsync` para normalizar fluxo assíncrono (`data`, `loading`, `error`, `run`).
-- Estados padronizados aplicados nas páginas de Etiquetas, Alertas e Histórico (loading, erro e vazio).
-- Persistência de filtros por querystring em:
-  - `/etiquetas` (`status`, `category`, `corridor`, `q`, `tagId`);
-  - `/alertas` (`type`, `priority`, `status`, `q`).
-- Suporte de deep-link em Etiquetas com `tagId` para pré-selecionar e abrir detalhe automaticamente.
+**Implementado:**
 
-## Variáveis de ambiente (Vite)
+- camada comum de simulação em `src/services/api.ts`;
+- padronização dos services por domínio;
+- tipagem centralizada em `src/types/`;
+- componentes reutilizáveis de estado (`LoadingState`, `ErrorState`, `EmptyState`);
+- hook `useAsync` para fluxo assíncrono uniforme;
+- persistência de filtros via querystring;
+- deep-link com `tagId` para abrir detalhe automaticamente.
 
-Crie um `.env` local (opcional) com:
+**Componentes/features adicionados:**
+
+- infraestrutura de rede simulada (`simulateNetwork`, `sleep`);
+- normalização de comportamento assíncrono nas principais páginas.
+
+### FASE 9 — Polimento para apresentação
+
+**Objetivo:** elevar qualidade visual e narrativa para demonstração com stakeholders.
+
+**Implementado:**
+
+- revisão de textos em pt-BR;
+- padronização de formatos em helpers utilitários;
+- refinamentos responsivos (desktop/tablet/mobile);
+- consistência de dados demonstrativos entre módulos;
+- checklist de reunião em `docs/DEMO_CHECKLIST.md`.
+
+**Componentes/features adicionados:**
+
+- ajustes finais em páginas e componentes para experiência de demo.
+
+---
+
+## 5) Como testar e demonstrar
+
+## Subir o sistema
+
+```bash
+npm run dev
+```
+
+Acesse no navegador a URL exibida no terminal (geralmente `http://localhost:5173`).
+
+### Validação funcional (fluxos positivos)
+
+1. **Navegação geral**
+   - Percorra: `/dashboard`, `/etiquetas`, `/atualizacoes`, `/alertas`, `/historico`.
+
+2. **Dashboard**
+   - Validar KPIs carregados;
+   - Confirmar bloco de última atualização.
+
+3. **Etiquetas**
+   - Aplicar filtros (status/categoria/corredor);
+   - Buscar por SKU/nome/tag;
+   - Abrir detalhes e validar preview da etiqueta.
+
+4. **Atualizações (individual)**
+   - Selecionar etiqueta;
+   - Informar novo preço;
+   - Enviar e acompanhar `Enviado → Confirmado/Falha`.
+
+5. **Atualizações (lote CSV)**
+   - Importar CSV (ex.: `sku;price;tagId`);
+   - Processar arquivo;
+   - Enviar lote e validar status por linha;
+   - Executar retry em itens com falha.
+
+6. **Alertas**
+   - Filtrar por tipo/prioridade/status;
+   - Marcar alerta como resolvido;
+   - Usar atalho para etiqueta relacionada.
+
+7. **Histórico**
+   - Filtrar por data, SKU, etiqueta e status;
+   - Validar registros e origem;
+   - Testar limpeza de filtros.
+
+### Validar estados de loading, vazio e erro
+
+#### Loading
+
+- Abrir cada tela e observar componentes de carregamento (spinner/skeleton).
+
+#### Empty state
+
+- Aplique filtros sem correspondência em:
+  - `/etiquetas`
+  - `/alertas`
+  - `/historico`
+
+#### Erro simulado
+
+Execute o app forçando falha de API mock:
+
+```bash
+VITE_FORCE_API_ERROR=true npm run dev
+```
+
+Com isso, valide:
+
+- mensagens de erro em tela;
+- ação de retry nos componentes;
+- retorno ao estado normal ao remover a flag.
+
+### Variáveis de ambiente (opcional)
+
+Crie `.env` local:
 
 ```bash
 VITE_API_MODE=mock
 VITE_FORCE_API_ERROR=false
 ```
 
-- `VITE_API_MODE`: nesta fase permanece em `mock`.
-- `VITE_FORCE_API_ERROR=true`: força falha nas chamadas mock para validar `ErrorState`.
+---
 
-## Como testar manualmente a FASE 8
+## 6) Fluxo de demonstração ideal
 
-1. Rodar aplicação em modo padrão:
+Sugestão de roteiro sequencial para apresentação ao cliente:
 
-```bash
-npm run dev
-```
+1. **Dashboard geral**
+   - visão executiva dos indicadores e última atualização.
+2. **Etiquetas**
+   - filtros + busca + abertura do preview no detalhe.
+3. **Atualizações (individual)**
+   - envio de novo preço e leitura de status.
+4. **Atualizações em lote (CSV)**
+   - importação, processamento e validação por item.
+5. **Alertas**
+   - filtragem operacional e resolução de incidente.
+6. **Histórico**
+   - filtros de auditoria e conferência de registros.
 
-2. Forçar erro de API para validar retries:
+> Referência adicional: `docs/DEMO_CHECKLIST.md`.
 
-```bash
-VITE_FORCE_API_ERROR=true npm run dev
-```
+---
 
-3. Validar empty states:
+## 7) Rotas principais
 
-- Em `/etiquetas`, aplique filtros/busca sem correspondência.
-- Em `/alertas`, filtre por combinação sem incidentes.
-- Em `/historico`, ajuste período/SKU/EtiquetaID para não retornar eventos.
+- `/dashboard`
+- `/etiquetas`
+- `/produtos`
+- `/atualizacoes/individual`
+- `/atualizacoes/lote`
+- `/alertas`
+- `/historico`
 
-4. Validar querystring:
+---
 
-- Abra `/etiquetas?status=OFFLINE&corridor=Corredor%203&q=arroz`.
-- Abra `/etiquetas?tagId=TAG-0001` para pré-foco e abertura do detalhe.
-- Abra `/alertas?status=RESOLVED&type=OFFLINE` e confira filtros pré-aplicados.
+## 8) Licença e créditos
 
+### Licença
 
-### ✅ FASE 9 — Polimento para apresentação
+Este projeto é distribuído sob licença **MIT** (ajuste aqui caso sua organização use outro modelo).
 
-- Linguagem revisada em pt-BR nas telas de Dashboard, Etiquetas, Atualizações, Alertas e Histórico.
-- Formatação padronizada com helpers centrais (`formatDateTimeBR` e `formatCurrencyBRL`).
-- Ajustes visuais para desktop, tablet e mobile com tabelas responsivas e melhor comportamento da navegação lateral.
-- Dados demonstrativos alinhados para cenário de supermercado realista com lojas, setores e corredores consistentes entre Etiquetas, Alertas e Histórico.
-- Checklist de reunião disponível em `docs/DEMO_CHECKLIST.md`.
+### Créditos
+
+- Equipe de desenvolvimento Front-End ESL (MVP Visual)
+- Participantes e revisores técnicos do projeto
+
+### Referências úteis
+
+- React: https://react.dev/
+- Vite: https://vite.dev/
+- TypeScript: https://www.typescriptlang.org/
+- Bootstrap 5: https://getbootstrap.com/
+- React Router: https://reactrouter.com/
+
+---
+
+## 9) Resumo executivo
+
+O MVP Visual Front-End ESL entrega uma experiência completa de demonstração operacional, cobrindo monitoramento, consulta, atualização, alerta e auditoria em 9 fases evolutivas, com arquitetura mock-first preparada para integração real em etapas futuras.
