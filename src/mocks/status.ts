@@ -5,5 +5,5 @@ export type SyncStatus = {
 
 export const syncStatus: SyncStatus = {
   online: true,
-  lastSyncText: 'Última sync: agora'
+  lastSyncText: 'Última atualização: agora'
 };

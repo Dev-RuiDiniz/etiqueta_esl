@@ -8,7 +8,8 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
   month: '2-digit',
   year: 'numeric',
   hour: '2-digit',
-  minute: '2-digit'
+  minute: '2-digit',
+  hour12: false
 });
 
 export function formatCurrencyBRL(value: number) {
@@ -29,4 +30,14 @@ export function truncateText(value: string, maxLength: number) {
 
 export function formatDateTimeBR(iso: string) {
   return dateFormatter.format(new Date(iso));
+}
+
+export function formatShortCode(value: string, visibleChars = 6) {
+  const normalized = value.trim();
+
+  if (normalized.length <= visibleChars) {
+    return normalized;
+  }
+
+  return `…${normalized.slice(-visibleChars)}`;
 }

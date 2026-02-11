@@ -84,7 +84,7 @@ function Dashboard() {
             <div className="card-body">
               <div className="d-flex align-items-center justify-content-between mb-3">
                 <h2 className="h6 mb-0">Offline por corredor</h2>
-                <span className="small text-muted">Dados mockados</span>
+                <span className="small text-muted">Dados demonstrativos</span>
               </div>
 
               {isLoading ? (

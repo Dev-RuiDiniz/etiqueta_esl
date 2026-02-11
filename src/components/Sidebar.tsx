@@ -17,7 +17,7 @@ function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="d-flex flex-column h-100 p-3 bg-white border-end">
       <div className="mb-4 px-2">
-        <h2 className="h5 mb-1">ESL Dashboard</h2>
+        <h2 className="h5 mb-1">Painel de Etiquetas</h2>
         <p className="text-muted small mb-0">Painel operacional</p>
       </div>
 

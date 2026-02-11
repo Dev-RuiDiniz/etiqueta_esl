@@ -6,11 +6,10 @@ type KpiItem = {
 type PagePlaceholderProps = {
   title: string;
   subtitle: string;
-  phaseHint?: string;
   kpis?: KpiItem[];
 };
 
-function PagePlaceholder({ title, subtitle, phaseHint = 'Fase 2', kpis = [] }: PagePlaceholderProps) {
+function PagePlaceholder({ title, subtitle, kpis = [] }: PagePlaceholderProps) {
   return (
     <section>
       <div className="mb-4">
@@ -35,8 +34,8 @@ function PagePlaceholder({ title, subtitle, phaseHint = 'Fase 2', kpis = [] }: P
 
       <article className="card border-0 shadow-sm">
         <div className="card-body">
-          <h3 className="h5">Placeholder de implementação</h3>
-          <p className="text-muted mb-0">Conteúdo será implementado na {phaseHint}.</p>
+          <h3 className="h5">Visão geral</h3>
+          <p className="text-muted mb-0">Conteúdo em evolução para as próximas etapas do produto.</p>
         </div>
       </article>
     </section>

@@ -56,7 +56,7 @@ function HistoryTable({ items, onViewTag }: HistoryTableProps) {
                       className="btn btn-sm btn-outline-primary"
                       onClick={() => onViewTag(item.tagId)}
                     >
-                      Ver etiqueta
+                      Ver detalhes
                     </button>
                   </td>
                 </tr>

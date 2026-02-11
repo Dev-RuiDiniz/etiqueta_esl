@@ -104,7 +104,7 @@ function Etiquetas() {
     <div className="container-fluid px-0 tags-page">
       <header className="mb-4">
         <h1 className="h3 mb-1">Etiquetas</h1>
-        <p className="text-muted mb-0">Visão operacional das ESL com status, bateria e localização.</p>
+        <p className="text-muted mb-0">Visão operacional das etiquetas com status, bateria e localização.</p>
       </header>
 
       {error ? (
@@ -129,8 +129,8 @@ function Etiquetas() {
         <LoadingState variant="skeleton" lines={8} />
       ) : filteredTags.length === 0 ? (
         <EmptyState
-          title="Nenhuma etiqueta encontrada"
-          description="Tente ajustar os filtros para localizar etiquetas com mais facilidade."
+          title="Nenhuma etiqueta encontrada para os filtros selecionados."
+          description="Ajuste os filtros para localizar os itens desejados."
           action={
             <button className="btn btn-outline-secondary" type="button" onClick={clearFilters}>
               Limpar filtros

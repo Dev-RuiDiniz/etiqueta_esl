@@ -146,3 +146,24 @@ body {
 .alerts-open-row {
   --bs-table-bg: #f8fbff;
 }
+
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+@media (max-width: 767.98px) {
+  .topbar {
+    flex-wrap: wrap;
+    align-items: flex-start !important;
+  }
+
+  .topbar .form-select {
+    min-width: 160px;
+  }
+
+  .card-body .table-responsive {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+  }
+}

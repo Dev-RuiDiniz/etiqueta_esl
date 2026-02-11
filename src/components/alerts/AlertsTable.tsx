@@ -79,7 +79,7 @@ function AlertsTable({ alerts, isResolvingById, onResolve, onViewTag }: AlertsTa
                           className="btn btn-sm btn-outline-primary"
                           onClick={() => onViewTag(alert.tagId)}
                         >
-                          Ver etiqueta
+                          Ver detalhes
                         </button>
                       </div>
                     </td>

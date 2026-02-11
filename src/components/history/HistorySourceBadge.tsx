@@ -7,7 +7,7 @@ type HistorySourceBadgeProps = {
 const sourceConfig: Record<HistorySource, { className: string; label: string }> = {
   MANUAL: { className: 'text-bg-info', label: 'Manual' },
   BULK: { className: 'text-bg-secondary', label: 'Lote' },
-  SYSTEM: { className: 'text-bg-dark', label: 'Sistema (mock)' }
+  SYSTEM: { className: 'text-bg-dark', label: 'Sistema' }
 };
 
 function HistorySourceBadge({ source }: HistorySourceBadgeProps) {
