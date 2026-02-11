@@ -1,6 +1,6 @@
 # Front-End ESL (MVP Visual)
 
-Setup inicial do front-end com React + Vite + TypeScript e Bootstrap 5 para iniciar a FASE 1.
+Projeto front-end em React + Vite + TypeScript com foco em operação de etiquetas eletrônicas (ESL), usando Bootstrap 5.
 
 ## Requisitos
 
@@ -33,10 +33,35 @@ src/
   pages/
   services/
   styles/
+  utils/
 ```
 
-## Base visual inicial
+## O que já está completo
 
-- Layout com `Container`, header “ESL Dashboard” e área de conteúdo.
-- Página inicial `Dashboard` com placeholder.
-- Tema neutro em `src/styles/theme.css`.
+### ✅ FASE 1 — Estrutura base
+
+- Rotas principais com React Router.
+- AppLayout com Sidebar e Topbar.
+- Páginas iniciais em placeholder para os módulos.
+- Navegação responsiva com menu mobile.
+
+### ✅ FASE 2 — Dashboard operacional (mock)
+
+- KPIs com dados mockados.
+- Estados de loading com skeleton.
+- Estado de erro com ação de retry.
+- Blocos de status por corredor e última atualização.
+
+### ✅ FASE 3 — Tela de Etiquetas (core)
+
+- Página `/etiquetas` com header operacional.
+- Barra de filtros por status, categoria, corredor e busca por SKU/Produto/EtiquetaID.
+- Tabela responsiva de etiquetas com badges de status e bateria.
+- Modal de detalhes com dados completos e placeholder para preview da etiqueta (Fase 4).
+- Mock service com Promise + delay para carregar dados e simular comportamento real.
+- Estados de loading, erro e vazio tratados para demo.
+
+## Próximas fases
+
+- FASE 4: preview visual real da etiqueta.
+- FASE 5: fluxo operacional para atualização de preço.

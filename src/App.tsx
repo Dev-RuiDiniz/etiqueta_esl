@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from './lib/router';
 import AppLayout from './layouts/AppLayout';
 import Alertas from './pages/Alertas';
 import Atualizacoes from './pages/Atualizacoes';

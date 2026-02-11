@@ -1,5 +1,6 @@
 export const apiClient = {
-  async get<T>(_path: string): Promise<T | null> {
+  async get<T>(path: string): Promise<T | null> {
+    void path;
     return Promise.resolve(null);
   }
 };

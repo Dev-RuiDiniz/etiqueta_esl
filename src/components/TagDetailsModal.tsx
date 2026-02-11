@@ -1,0 +1,106 @@
+import { useEffect } from 'react';
+import type { Tag } from '../mocks/tags';
+import { formatCurrencyBRL, formatDateTimeBR } from '../utils/format';
+import BadgeStatus from './BadgeStatus';
+import BatteryBadge from './BatteryBadge';
+
+type TagDetailsModalProps = {
+  isOpen: boolean;
+  tag: Tag | null;
+  onClose: () => void;
+};
+
+function TagDetailsModal({ isOpen, tag, onClose }: TagDetailsModalProps) {
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !tag) {
+    return null;
+  }
+
+  return (
+    <div className="tag-modal-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="tag-modal card border-0"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tag-details-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="card-header bg-white d-flex justify-content-between align-items-start">
+          <div>
+            <h2 id="tag-details-title" className="h5 mb-1">
+              Detalhes da etiqueta
+            </h2>
+            <p className="text-muted mb-0 small">{tag.tagId}</p>
+          </div>
+          <button type="button" className="btn-close" aria-label="Fechar detalhes" onClick={onClose}></button>
+        </div>
+
+        <div className="card-body">
+          <dl className="row mb-0">
+            <dt className="col-sm-4">EtiquetaID</dt>
+            <dd className="col-sm-8">{tag.tagId}</dd>
+
+            <dt className="col-sm-4">SKU</dt>
+            <dd className="col-sm-8">{tag.sku}</dd>
+
+            <dt className="col-sm-4">Produto</dt>
+            <dd className="col-sm-8">{tag.productName}</dd>
+
+            <dt className="col-sm-4">Preço</dt>
+            <dd className="col-sm-8">{formatCurrencyBRL(tag.price)}</dd>
+
+            <dt className="col-sm-4">Status</dt>
+            <dd className="col-sm-8">
+              <BadgeStatus status={tag.status} />
+            </dd>
+
+            <dt className="col-sm-4">Bateria</dt>
+            <dd className="col-sm-8">
+              <BatteryBadge battery={tag.battery} />
+            </dd>
+
+            <dt className="col-sm-4">Localização</dt>
+            <dd className="col-sm-8">{tag.location}</dd>
+
+            <dt className="col-sm-4">Última atualização</dt>
+            <dd className="col-sm-8">{formatDateTimeBR(tag.lastUpdate)}</dd>
+          </dl>
+
+          <div className="card bg-light-subtle border mt-4">
+            <div className="card-body">
+              <h3 className="h6">Preview da etiqueta (Fase 4)</h3>
+              <p className="text-muted mb-0">Espaço reservado para visualização real da ESL com layout final.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card-footer bg-white d-flex justify-content-end gap-2">
+          <button type="button" className="btn btn-outline-secondary" onClick={onClose}>
+            Fechar
+          </button>
+          <button type="button" className="btn btn-primary" disabled>
+            Atualizar preço (Fase 5)
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export default TagDetailsModal;
