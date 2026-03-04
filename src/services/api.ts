@@ -19,6 +19,7 @@ const DEFAULT_FAIL_RATE = 0.05;
 
 const API_MODE = (import.meta.env.VITE_API_MODE ?? 'mock') as ApiMode;
 const FORCE_API_ERROR = import.meta.env.VITE_FORCE_API_ERROR === 'true';
+const ENABLE_MOCK_FAILURE = import.meta.env.VITE_ENABLE_MOCK_FAILURE === 'true';
 
 function randomBetween(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -43,7 +44,7 @@ function createApiError(message: string): ApiError {
 export async function simulateNetwork<T>(data: T, opts?: SimulateNetworkOptions): Promise<T> {
   const minMs = opts?.minMs ?? DEFAULT_MIN_MS;
   const maxMs = opts?.maxMs ?? DEFAULT_MAX_MS;
-  const failRate = opts?.failRate ?? DEFAULT_FAIL_RATE;
+  const failRate = ENABLE_MOCK_FAILURE ? (opts?.failRate ?? DEFAULT_FAIL_RATE) : 0;
 
   await sleep(randomBetween(minMs, maxMs));
 

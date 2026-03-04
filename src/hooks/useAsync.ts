@@ -1,12 +1,14 @@
-import { DependencyList, useCallback, useEffect, useState } from 'react';
+import { DependencyList, useCallback, useEffect, useRef, useState } from 'react';
 
 type UseAsyncOptions = {
   immediate?: boolean;
 };
 
 function useAsync<T>(fn: () => Promise<T>, deps: DependencyList = [], options: UseAsyncOptions = {}) {
+  const immediate = options.immediate ?? true;
+  const previousDepsRef = useRef<DependencyList | null>(null);
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(Boolean(options.immediate ?? true));
+  const [loading, setLoading] = useState(Boolean(immediate));
   const [error, setError] = useState<unknown>(null);
 
   const run = useCallback(async () => {
@@ -26,10 +28,23 @@ function useAsync<T>(fn: () => Promise<T>, deps: DependencyList = [], options: U
   }, [fn]);
 
   useEffect(() => {
-    if (options.immediate ?? true) {
-      void run();
+    if (!immediate) {
+      return;
     }
-  }, [options.immediate, run, deps]);
+
+    const previousDeps = previousDepsRef.current;
+    const depsChanged =
+      previousDeps === null ||
+      previousDeps.length !== deps.length ||
+      previousDeps.some((value, index) => !Object.is(value, deps[index]));
+
+    if (!depsChanged) {
+      return;
+    }
+
+    previousDepsRef.current = deps;
+    void run().catch(() => undefined);
+  }, [deps, immediate, run]);
 
   return { data, loading, error, run, setData };
 }
