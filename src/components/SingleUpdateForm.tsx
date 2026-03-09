@@ -16,6 +16,11 @@ type SubmissionState = {
   message?: string;
 };
 
+function buildFallbackRequestId() {
+  const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `UPD-${Date.now()}-${randomPart}`;
+}
+
 function SingleUpdateForm({ preselectedTagId }: SingleUpdateFormProps) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(true);
@@ -101,6 +106,14 @@ function SingleUpdateForm({ preselectedTagId }: SingleUpdateFormProps) {
           pollResponse.status === 'CONFIRMED'
             ? 'Atualização confirmada pela etiqueta.'
             : pollResponse.errorMessage ?? 'Falha ao confirmar atualização.'
+      });
+    } catch (error) {
+      // Em integração real, falhas de rede/API não devem quebrar a experiência do operador.
+      const message = error instanceof Error ? error.message : 'Falha ao enviar atualização.';
+      setSubmissionState({
+        requestId: buildFallbackRequestId(),
+        status: 'FAILED',
+        message
       });
     } finally {
       setIsSubmitting(false);

@@ -50,6 +50,11 @@ src/
   styles/          # estilos globais e específicos de componentes
   types/           # contratos TypeScript por domínio
   utils/           # helpers utilitários (formatação, etc.)
+server/
+  esl/             # integração com API ESL (cliente, serviços, rotas)
+  jobs/            # jobs de sincronização/polling/reconciliação
+  db/              # repositórios em memória (bindings, status, auditoria)
+  utils/           # utilitários de HTTP e carregamento de env
 ```
 
 ### Onde estão os elementos-chave
@@ -83,19 +88,25 @@ cd etiqueta_esl
 npm install
 ```
 
-3. Rodar ambiente de desenvolvimento
+3. Rodar o BFF (somente para integração real)
+
+```bash
+npm run bff
+```
+
+4. Rodar ambiente de desenvolvimento
 
 ```bash
 npm run dev
 ```
 
-4. Gerar build de produção
+5. Gerar build de produção
 
 ```bash
 npm run build
 ```
 
-5. Visualizar build localmente
+6. Visualizar build localmente
 
 ```bash
 npm run preview
@@ -104,6 +115,7 @@ npm run preview
 ### Scripts úteis
 
 - `npm run dev` — inicia servidor de desenvolvimento
+- `npm run bff` — inicia o Backend BFF de integração ESL
 - `npm run build` — valida TypeScript e gera build
 - `npm run preview` — serve build local para validação
 - `npm run lint` — checagem de qualidade com ESLint
@@ -341,13 +353,30 @@ Com isso, valide:
 - ação de retry nos componentes;
 - retorno ao estado normal ao remover a flag.
 
-### Variáveis de ambiente (opcional)
+### Variáveis de ambiente
 
-Crie `.env` local:
+Crie `.env` local a partir de `.env.example`.
+
+Modo mock (padrão):
 
 ```bash
 VITE_API_MODE=mock
 VITE_FORCE_API_ERROR=false
+```
+
+Modo integração real (frontend + BFF):
+
+```bash
+VITE_API_MODE=real
+VITE_BFF_TARGET=http://127.0.0.1:8787
+
+BFF_PORT=8787
+ESL_HOST=https://esl.greendisplay.cn
+ESL_CLIENT_ID=seu_app_key
+ESL_SIGN=seu_sign
+ESL_STORE_CODE=001
+ESL_IS_BASE64=0
+ESL_ENABLE_JOBS=true
 ```
 
 ---
