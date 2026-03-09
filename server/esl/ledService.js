@@ -2,10 +2,11 @@ import { runWithRetry } from './eslRetryPolicy.js';
 import { toVendorSearchPayload } from './eslMapper.js';
 
 export class EslLedService {
-  constructor({ config, apiClient, auditLogService }) {
+  constructor({ config, apiClient, auditLogService, deadLetterRepo }) {
     this.config = config;
     this.apiClient = apiClient;
     this.auditLogService = auditLogService;
+    this.deadLetterRepo = deadLetterRepo;
   }
 
   async search(eslCodes) {
@@ -18,10 +19,11 @@ export class EslLedService {
         payload,
         meta: { count: eslCodes.length }
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.search',
       payload,
       request_id: result.request_id,

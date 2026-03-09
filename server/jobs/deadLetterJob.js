@@ -1,7 +1,5 @@
-import { listDeadLetters, removeDeadLetter } from '../db/deadLetterRepo.js';
-
 // Job de reprocessamento da dead-letter queue.
-export function startDeadLetterJob({ intervalMs, logger = console, replayHandlers = {} }) {
+export function startDeadLetterJob({ deadLetterRepo, intervalMs, logger = console, metrics = null, replayHandlers = {} }) {
   let running = false;
 
   const timer = setInterval(async () => {
@@ -12,7 +10,7 @@ export function startDeadLetterJob({ intervalMs, logger = console, replayHandler
     running = true;
 
     try {
-      const deadLetters = listDeadLetters(100);
+      const deadLetters = await deadLetterRepo.listDeadLetters(100);
 
       for (const item of deadLetters) {
         const handler = replayHandlers[item.operation];
@@ -22,18 +20,23 @@ export function startDeadLetterJob({ intervalMs, logger = console, replayHandler
         }
 
         try {
+          await deadLetterRepo.markDeadLetterStatus(item.id, 'REPROCESSING');
           await handler(item);
-          removeDeadLetter(item.id);
+          await deadLetterRepo.markDeadLetterStatus(item.id, 'PROCESSED');
+          await deadLetterRepo.removeDeadLetter(item.id);
         } catch (error) {
-          logger.error('[job:deadLetter] replay failed', {
+          await deadLetterRepo.markDeadLetterStatus(item.id, 'FAILED', error?.message ?? 'Unknown error');
+          logger.error({
             dead_letter_id: item.id,
             operation: item.operation,
             error: error?.message ?? 'Unknown error'
-          });
+          }, '[job:deadLetter] replay failed');
         }
       }
+      metrics?.trackJobRun?.('deadLetter', 'success');
     } catch (error) {
-      logger.error('[job:deadLetter] crashed', error);
+      logger.error({ err: error }, '[job:deadLetter] crashed');
+      metrics?.trackJobRun?.('deadLetter', 'failed');
     } finally {
       running = false;
     }

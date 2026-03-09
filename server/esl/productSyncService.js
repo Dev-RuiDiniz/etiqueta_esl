@@ -1,4 +1,3 @@
-import { listBindingsByProductCode } from '../db/eslBindingRepo.js';
 import { runWithRetry } from './eslRetryPolicy.js';
 import { toVendorProduct, toVendorProductsArray } from './eslMapper.js';
 
@@ -13,11 +12,13 @@ function chunkArray(input, size) {
 }
 
 export class EslProductSyncService {
-  constructor({ config, apiClient, refreshService, auditLogService }) {
+  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, deadLetterRepo }) {
     this.config = config;
     this.apiClient = apiClient;
     this.refreshService = refreshService;
     this.auditLogService = auditLogService;
+    this.bindingRepo = bindingRepo;
+    this.deadLetterRepo = deadLetterRepo;
     // Base interna em memória (v1): simula source of truth + fila de saída.
     this.productsByCode = new Map();
     this.outbox = [];
@@ -93,10 +94,11 @@ export class EslProductSyncService {
         payload: vendorProduct,
         meta: { product_code: vendorProduct.pc }
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'product.create',
       payload: vendorProduct,
       request_id: result.request_id,
@@ -116,7 +118,7 @@ export class EslProductSyncService {
         sync_error: null
       });
 
-      const bindings = listBindingsByProductCode(vendorProduct.pc);
+      const bindings = await this.bindingRepo.listBindingsByProductCode(vendorProduct.pc);
       this.refreshService.enqueueRefresh(bindings.map((item) => item.esl_code));
     }
 
@@ -133,10 +135,11 @@ export class EslProductSyncService {
         payload: vendorProducts,
         meta: { count: vendorProducts.length }
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'product.create_multiple',
       payload: vendorProducts,
       request_id: result.request_id,
@@ -163,7 +166,7 @@ export class EslProductSyncService {
           sync_error: null
         });
 
-        const bindings = listBindingsByProductCode(item.pc);
+        const bindings = await this.bindingRepo.listBindingsByProductCode(item.pc);
         this.refreshService.enqueueRefresh(bindings.map((binding) => binding.esl_code));
       }
     }

@@ -14,10 +14,11 @@ function extractTemplates(data) {
 }
 
 export class EslTemplateService {
-  constructor({ config, apiClient, auditLogService }) {
+  constructor({ config, apiClient, auditLogService, deadLetterRepo }) {
     this.config = config;
     this.apiClient = apiClient;
     this.auditLogService = auditLogService;
+    this.deadLetterRepo = deadLetterRepo;
     // Cache local para reduzir chamadas repetidas ao endpoint de templates.
     this.cache = {
       expiresAt: 0,
@@ -51,7 +52,8 @@ export class EslTemplateService {
         operation: 'template.query',
         payload: query
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
     const templates = extractTemplates(result.data).map((item) => fromVendorTemplateRecord(item));
@@ -61,7 +63,7 @@ export class EslTemplateService {
       expiresAt: now + this.config.templateCacheTtlMs
     };
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'template.query',
       payload: query,
       request_id: result.request_id,

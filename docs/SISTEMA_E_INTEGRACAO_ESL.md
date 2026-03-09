@@ -1,18 +1,15 @@
-# Sistema e Integração ESL
+# Sistema e Integração ESL (Visão Técnica)
 
-## 1. Visão geral do sistema
+## 1. Visão geral
 
-O projeto **etiqueta_esl** é uma plataforma de operação de etiquetas eletrônicas de prateleira (ESL) composta por:
+O projeto `etiqueta_esl` integra uma aplicação React com o ecossistema ESL GreenDisplay por meio de um BFF Node.js. A arquitetura foi evoluída para suportar persistência relacional, autenticação JWT com RBAC, observabilidade e testes automatizados.
 
-- **Frontend React (Vite + TypeScript):** interface operacional para monitoramento, consulta de etiquetas, atualização de preços, alertas e histórico.
-- **Backend BFF Node.js:** camada intermediária entre o frontend e a API ESL do fornecedor (GreenDisplay), centralizando autenticação, assinatura de requests, orquestração e jobs.
+Objetivos da integração:
 
-A aplicação funciona em dois modos:
-
-- **`mock`**: dados simulados para demonstração e validação visual.
-- **`real`**: integração ativa via BFF com API ESL.
-
----
+- Orquestrar operações de produto, bind/unbind, refresh e status de etiquetas.
+- Isolar credenciais vendor no backend.
+- Garantir rastreabilidade operacional (auditoria e dead-letter).
+- Permitir operação em modo local (`memory`) e produção (`postgres`).
 
 ## 2. Arquitetura fim a fim
 
@@ -20,270 +17,227 @@ A aplicação funciona em dois modos:
 flowchart LR
 A[Frontend React] -->|/api/esl/*| B[BFF Node.js]
 B -->|/api/{i_client_id} + sign| C[API ESL GreenDisplay]
-C --> D[Servidor/Cloud ESL]
-D --> E[Base Station / AP]
-E --> F[ESL Tags]
+C --> D[Cloud ESL]
+D --> E[Base Station/AP]
+E --> F[Etiquetas ESL]
 F --> E --> D --> C --> B --> A
 ```
 
-### Componentes
+Componentes:
 
-1. **Frontend**
-- Exibe status de etiquetas.
-- Aciona atualização individual/lote.
-- Inicia ações operacionais (bind, refresh, LED, consultas).
+1. Frontend: interface operacional (dashboard, etiquetas, atualizações, alertas, histórico).
+2. BFF: autenticação, autorização, assinatura vendor, retry, jobs, persistência e observabilidade.
+3. API ESL: endpoints de produto, vínculo, refresh, status e templates.
+4. Base Station/AP: ponte física entre cloud e etiquetas.
+5. Etiquetas: dispositivo final de exibição.
 
-2. **BFF**
-- Evita exposição de credenciais da API ESL no browser.
-- Injeta `store_code`, `is_base64`, `sign` e `i_client_id`.
-- Mantém trilha de auditoria e mecanismos de retry.
+## 3. Implementação da integração no repositório
 
-3. **API ESL**
-- Recebe comandos de produto/vínculo/refresh.
-- Disponibiliza status de etiquetas e templates.
+### Backend
 
-4. **Base Station / AP**
-- Faz ponte entre cloud ESL e etiquetas físicas.
+- `server/index.js`: bootstrap, health/readiness, metrics, auth routes, roteamento ESL, tratamento de erro.
+- `server/esl/*`: serviços de domínio (produto, bind, refresh, status, template, LED, retry, auditoria, mapper).
+- `server/auth/*`: autenticação local JWT e regras de RBAC.
+- `server/db/repositories/*`: abstração de repositório (`memory` e `postgres`).
+- `server/db/postgres/*`: pool e migrações SQL.
+- `server/jobs/*`: sincronização, refresh, polling, reconciliação, dead-letter, retenção.
+- `server/observability/*`: logger e métricas.
 
-5. **Etiquetas ESL**
-- Renderizam preço/infos de produto e retornam status/bateria.
+### Frontend
 
----
+- `src/services/esl/*`: cliente e serviços para endpoints do BFF.
+- `src/hooks/useEslStatus.ts`: atualização periódica de estado.
+- `src/types/esl.ts`: contratos públicos da integração.
+- `src/services/tagsService.ts` e `src/services/updatesService.ts`: comutação de fluxo `mock` x `real`.
 
-## 3. Como a integração foi implementada
+## 4. Modos de operação
 
-A integração foi implementada em duas camadas:
-
-- **Frontend:** serviços em `src/services/esl/*` e tipos em `src/types/esl.ts`.
-- **BFF:** serviços em `server/esl/*` e rotas internas em `server/esl/routes.js`.
-
-### Fluxo padrão de atualização de preço (modo real)
-
-1. Frontend chama serviço de atualização.
-2. Serviço envia `upsert` de produto para o BFF.
-3. BFF chama `product/create` no fornecedor.
-4. Frontend/BFF dispara `refresh/trigger`.
-5. BFF chama `esl/bind_task`.
-6. Frontend faz polling em `status/query` para confirmação.
-
----
-
-## 4. Modo `mock` vs `real`
-
-## `mock`
+### Modo `mock`
 
 - `VITE_API_MODE=mock`
-- Usa dados de `src/mocks/*`.
-- Simulação de latência e falha opcional.
+- Dados simulados para demonstração.
+- Sem dependência de API vendor.
 
-## `real`
+### Modo `real`
 
 - `VITE_API_MODE=real`
-- Frontend usa BFF via `/api/esl/*`.
-- BFF integra com API GreenDisplay.
+- Frontend chama BFF (`/api/esl/*`).
+- BFF chama vendor com `/{i_client_id}`, `store_code`, `is_base64` e `sign`.
 
-### Variáveis principais
+Comutação:
 
-- Frontend:
-  - `VITE_API_MODE`
-  - `VITE_BFF_TARGET`
-  - `VITE_FORCE_API_ERROR`
-  - `VITE_ENABLE_MOCK_FAILURE`
-- BFF:
-  - `BFF_PORT`
-  - `ESL_HOST`
-  - `ESL_CLIENT_ID`
-  - `ESL_SIGN`
-  - `ESL_STORE_CODE`
-  - `ESL_IS_BASE64`
-  - `ESL_ENABLE_JOBS`
+- Frontend: `VITE_API_MODE`, `VITE_BFF_TARGET`.
+- BFF: variáveis `ESL_*`, persistência, auth e métricas.
 
----
+## 5. Persistência relacional e repositórios
 
-## 5. Mapeamento de módulos backend
+Implementação por contrato único de repositório:
 
-## `server/esl`
+- `createRepositories(config)` seleciona `memory` ou `postgres`.
+- Serviços consomem interfaces, sem acoplamento ao storage.
 
-- `eslApiClient.js`: cliente HTTP assinado para API vendor.
-- `signer.js`: injeta assinatura/parâmetros obrigatórios.
-- `productSyncService.js`: upsert de produtos e fila de sincronização.
-- `bindService.js`: bind/unbind e bind em lote.
-- `refreshService.js`: trigger de refresh e update direto.
-- `statusService.js`: sync/query/query_status/query_count e cache.
-- `templateService.js`: consulta e cache de templates.
-- `ledService.js`: busca por LED.
-- `eslRetryPolicy.js`: retry com backoff + dead-letter.
-- `eslAuditLogService.js`: auditoria de comandos.
-- `eslMapper.js`: mapeamento interno/vendor.
+Entidades persistidas em PostgreSQL:
 
-## `server/jobs`
+- `esl_bindings`
+- `esl_status_snapshots`
+- `esl_command_log`
+- `dead_letters`
+- `users`
+- `refresh_tokens`
 
-- `productSyncJob.js`
-- `refreshTriggerJob.js`
-- `statusPollingJob.js`
-- `reconciliationJob.js`
-- `deadLetterJob.js`
+Migração inicial:
 
-## `server/db`
+- `server/db/postgres/migrations/001_init.up.sql`
+- `server/db/postgres/migrations/001_init.down.sql`
 
-- `eslCommandLogRepo.js`
-- `eslBindingRepo.js`
-- `eslStatusRepo.js`
-- `deadLetterRepo.js`
+Executor:
 
-> Observação: persistência atual é **em memória** (v1).
+- `npm run bff:migrate`
+- `npm run bff:migrate:down`
 
----
+## 6. Autenticação JWT e RBAC
 
-## 6. Mapeamento de módulos frontend
+Rotas públicas de auth:
 
-## `src/services/esl`
+- `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
 
-- `apiClient.ts`: cliente para BFF (`/api/esl/*`).
-- `productService.ts`, `bindService.ts`, `refreshService.ts`, `statusService.ts`, `templateService.ts`, `ledService.ts`.
-- `mapper.ts`: adapta `EslStatusSnapshot` para `Tag` da UI.
+Comportamento:
 
-## `src/hooks`
+- `BFF_AUTH_ENABLED=false`: rotas `/api/esl/*` abertas (compatibilidade).
+- `BFF_AUTH_ENABLED=true`: `Bearer <access_token>` obrigatório em `/api/esl/*`.
 
-- `useEslStatus.ts`: polling periódico de status/resumo.
+Perfis:
 
-## `src/types`
+- `admin`: total, incluindo rotas administrativas.
+- `operador`: operação e monitoramento.
+- `viewer`: leitura.
 
-- `esl.ts`: contratos públicos da integração (`EslCommandResult`, `EslProductUpsertInput`, `EslBindingInput`, etc.).
+Bootstrap:
 
----
+- Usuário admin padrão criado automaticamente no startup, conforme variáveis de ambiente.
 
-## 7. Fluxos operacionais detalhados
+## 7. Observabilidade e operação
 
-## 7.1 Sincronização de produto
+### Endpoints operacionais
 
-1. Evento interno de produto/preço.
-2. Enfileira/upsert no `productSyncService`.
-3. Chama `product/create` ou `product/create_multiple`.
-4. Atualiza auditoria e agenda refresh de etiquetas impactadas.
+- `GET /healthz`: processo ativo.
+- `GET /readyz`: valida config ESL, readiness do repositório/DB e configuração de auth.
+- `GET /metrics`: métricas Prometheus.
 
-## 7.2 Bind/Unbind
+### Logs e correlação
 
-- **Bind**: associação `esl_code` ↔ `product_code` com template opcional.
-- **Bind em lote**: múltiplas associações em uma chamada.
-- **Unbind**: remoção de vínculo e trigger de atualização.
+- Logs estruturados JSON (`pino`).
+- Correlação por `request_id` no ciclo HTTP do BFF.
 
-## 7.3 Trigger de refresh
+### Métricas principais
 
-- Etiquetas são enfileiradas em memória.
-- Job/ação manual aciona `bind_task` consolidado.
+- Latência/volume HTTP por rota.
+- Erros por categoria (`auth`, `validation`, `upstream_vendor`, `database`, `job_runtime`, `runtime`).
+- Latência e erro de chamadas vendor.
+- Execução de jobs (`success`/`failed`).
+- Tamanho de fila de refresh e dead-letter.
 
-## 7.4 Consulta de status
+## 8. Fluxos operacionais detalhados
 
-- `query_count` para visão geral.
-- `query` paginado para snapshots completos.
-- `query_status` para etiquetas específicas.
-- `sync` para sincronização ativa de estado.
+### 8.1 Sincronização de produto
 
-## 7.5 Busca por LED
+1. Produto é enviado para `products/upsert` ou `products/upsert-bulk`.
+2. `productSyncService` mapeia payload e chama vendor (`/product/create` ou `/product/create_multiple`).
+3. Em sucesso, atualiza cache interno e agenda refresh das etiquetas vinculadas.
+4. Auditoria registra comando e resposta.
 
-- Operação de localização física por código de etiqueta.
-- BFF chama endpoint `esl/search`.
+### 8.2 Bind/unbind
 
-## 7.6 Atualização direta
+1. BFF recebe bind (`esl_code`, `product_code`, `template_id`).
+2. Chama vendor (`/esl/bind` ou `/esl/bind_multiple`).
+3. Persiste vínculo local em repositório.
+4. Agenda refresh da etiqueta.
 
-- Envia produto/template/led no mesmo comando.
-- Usado para cenários urgentes.
+Unbind remove vínculo local e agenda refresh.
 
----
+### 8.3 Trigger de refresh
 
-## 8. Endpoints: BFF interno e API vendor
+1. Fila interna em `refreshService` agrega etiquetas pendentes.
+2. Trigger (`/esl/bind_task`) é disparado via rota manual ou job periódico.
+3. Em sucesso, fila é limpa.
 
-## 8.1 Endpoints internos do BFF (`/api/esl/*`)
+### 8.4 Consulta de status
 
-| Método | Rota | Finalidade |
+1. `query_count` obtém total online/offline.
+2. `query` paginado alimenta snapshots.
+3. `query_status` consulta lista específica.
+4. `sync` força atualização no vendor.
+
+### 8.5 LED search
+
+- `ledService` chama `/esl/search` para localização física de etiquetas.
+
+### 8.6 Atualização direta
+
+- `refreshService.directUpdate` chama `/esl/direct` para atualização urgente em uma operação.
+
+## 9. Mapeamento de endpoints (BFF x Vendor)
+
+| BFF | Vendor | Uso |
 |---|---|---|
-| GET | `/api/esl/health` | Saúde/configuração da integração |
-| GET | `/api/esl/templates` | Consulta templates |
-| GET | `/api/esl/status/summary` | Resumo online/offline |
-| GET | `/api/esl/status` | Status paginado |
-| POST | `/api/esl/status/sync` | Sincroniza status no fornecedor |
-| POST | `/api/esl/status/query` | Consulta status por lista de códigos |
-| POST | `/api/esl/products/upsert` | Upsert de um produto |
-| POST | `/api/esl/products/upsert-bulk` | Upsert em lote |
-| POST | `/api/esl/bind` | Bind de etiqueta |
-| POST | `/api/esl/bind/bulk` | Bind em lote |
-| POST | `/api/esl/unbind` | Unbind |
-| POST | `/api/esl/refresh/trigger` | Trigger de refresh |
-| POST | `/api/esl/led/search` | Busca por LED |
-| POST | `/api/esl/direct` | Atualização direta |
-| GET | `/api/esl/audit` | Auditoria |
-| GET | `/api/esl/dead-letters` | Dead-letter queue |
-| POST | `/api/esl/jobs/run` | Execução manual de ciclo de jobs |
+| `POST /api/esl/products/upsert` | `POST /product/create` | Upsert unitário |
+| `POST /api/esl/products/upsert-bulk` | `POST /product/create_multiple` | Upsert em lote |
+| `POST /api/esl/bind` | `POST /esl/bind` | Vínculo unitário |
+| `POST /api/esl/bind/bulk` | `POST /esl/bind_multiple` | Vínculo em lote |
+| `POST /api/esl/unbind` | `POST /esl/unbind` | Desvínculo |
+| `POST /api/esl/refresh/trigger` | `POST /esl/bind_task` | Trigger de atualização |
+| `GET /api/esl/status` | `GET /esl/query` | Consulta paginada |
+| `POST /api/esl/status/query` | `POST /esl/query_status` | Consulta específica |
+| `POST /api/esl/status/sync` | `POST /esl/sync` | Forçar sincronização |
+| `GET /api/esl/templates` | `GET /template/query` | Templates |
+| `POST /api/esl/led/search` | `POST /esl/search` | LED search |
+| `POST /api/esl/direct` | `POST /esl/direct` | Atualização direta |
 
-## 8.2 Mapeamento para API vendor (resumo)
+## 10. Mapeamento de dados (modelo interno x ESL)
 
-| BFF | Vendor |
-|---|---|
-| `/products/upsert` | `POST /product/create` |
-| `/products/upsert-bulk` | `POST /product/create_multiple` |
-| `/bind` | `POST /esl/bind` |
-| `/bind/bulk` | `POST /esl/bind_multiple` |
-| `/unbind` | `POST /esl/unbind` |
-| `/refresh/trigger` | `POST /esl/bind_task` |
-| `/status` | `GET /esl/query` |
-| `/status/summary` | `GET /esl/query_count` (ou cache local) |
-| `/status/query` | `POST /esl/query_status` |
-| `/status/sync` | `POST /esl/sync` |
-| `/led/search` | `POST /esl/search` |
-| `/direct` | `POST /esl/direct` |
-| `/templates` | `GET /template/query` |
-
----
-
-## 9. Mapeamento de dados (interno ↔ ESL)
-
-| Interno | ESL API |
+| Campo interno | Campo ESL |
 |---|---|
 | `product_code` / `sku` | `pc` / `product_code` |
 | `product_name` | `pn` |
 | `price` | `pp` |
 | `quantity` | `qty` |
-| `esl_code` | `f1` (bind/unbind/search) / `esl_code` (direct) |
-| `template_id` | `f3` (bind) / `template_id` (direct) |
+| `esl_code` (`tagId`) | `f1` ou `esl_code` |
+| `template_id` | `f3` ou `template_id` |
 | `store_code` | `store_code` |
 | `online` | `online` |
-| `battery` | `esl_battery` (normalizado para %) |
+| `battery` | `esl_battery` |
 
----
+## 11. Retry, dead-letter, auditoria e reconciliação
 
-## 10. Retry, dead-letter, auditoria e reconciliação
+- Retry com backoff exponencial em falhas transitórias.
+- Exaustão de tentativas gera item na `dead_letters`.
+- Job de replay tenta reprocessar operações conhecidas.
+- `esl_command_log` mantém trilha de execução.
+- Job de reconciliação corrige divergência de vínculo entre estado local e remoto.
+- Job de retenção aplica expurgo por tempo em log e dead-letter.
 
-- **Retry automático** com backoff exponencial em operações críticas.
-- **Dead-letter queue** para falhas após limite de tentativas.
-- **Auditoria** de request/response com metadados operacionais.
-- **Reconciliação periódica** para corrigir divergência entre vínculo interno e estado remoto.
+## 12. Limitações atuais e próximos passos
 
----
+### Limitações atuais
 
-## 11. Limitações atuais e próximos passos
-
-### Limitações atuais (v1)
-
-- Repositórios em memória (sem banco persistente).
-- Sem autenticação/autorização dedicada no BFF.
-- Sem painel administrativo dedicado para observabilidade do BFF.
+- Frontend ainda não possui fluxo nativo de login para consumir JWT quando `BFF_AUTH_ENABLED=true`.
+- Teste de integração PostgreSQL depende de `DATABASE_URL` no ambiente local/CI.
+- Não há painel administrativo dedicado para observabilidade (métricas expostas por endpoint técnico).
+- JWT é interno (sem IdP/SSO externo nesta fase).
 
 ### Próximos passos recomendados
 
-1. Persistir `esl_bindings`, `esl_status_snapshots`, `esl_command_log` e `dead_letters` em banco relacional.
-2. Adicionar autenticação JWT no BFF e controle por perfil.
-3. Instrumentar métricas (latência, taxa de erro, tamanho de fila).
-4. Implementar testes automatizados de contrato BFF e integração.
+1. Integrar autenticação no frontend (login, refresh automático e gerenciamento de sessão).
+2. Publicar pipeline CI com PostgreSQL de teste para remover `skip` condicional.
+3. Criar dashboard operacional para métricas e dead-letter.
+4. Evoluir autorização para escopo por loja (`store_code`) e trilha de auditoria por usuário.
 
----
+## 13. Base documental utilizada
 
-## 12. Base documental da integração
-
-A integração foi especificada e validada com base nos seguintes documentos presentes no repositório:
+A integração foi estruturada com base nos documentos vendor presentes na raiz:
 
 - `ESL manual.pdf`
 - `Base Station WIFI Configuration.pdf`
 - `API Reference_20231118.pdf`
-
-Esses materiais definem fluxo operacional, provisionamento da base station/AP, e contratos de API vendor utilizados no BFF.

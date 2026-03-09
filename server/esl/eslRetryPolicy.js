@@ -1,5 +1,3 @@
-import { addDeadLetter } from '../db/deadLetterRepo.js';
-
 function sleep(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -31,6 +29,7 @@ export async function runWithRetry(task, context, config, options = {}) {
   const attempts = options.attempts ?? config.maxRetryAttempts;
   const baseDelayMs = options.baseDelayMs ?? config.retryBaseDelayMs;
   const isRetryable = options.isRetryable ?? defaultRetryable;
+  const deadLetterRepo = options.deadLetterRepo;
 
   let lastError = null;
 
@@ -50,17 +49,20 @@ export async function runWithRetry(task, context, config, options = {}) {
     }
   }
 
-  addDeadLetter({
-    operation: context.operation,
-    payload: context.payload,
-    error: {
-      message: lastError?.message ?? 'Unknown retry failure',
-      code: lastError?.code ?? 'RETRY_FAILED',
-      statusCode: lastError?.statusCode
-    },
-    attempts,
-    meta: context.meta ?? {}
-  });
+  if (deadLetterRepo && typeof deadLetterRepo.addDeadLetter === 'function') {
+    await deadLetterRepo.addDeadLetter({
+      operation: context.operation,
+      payload: context.payload,
+      error: {
+        message: lastError?.message ?? 'Unknown retry failure',
+        code: lastError?.code ?? 'RETRY_FAILED',
+        statusCode: lastError?.statusCode
+      },
+      attempts,
+      meta: context.meta ?? {},
+      status: 'PENDING'
+    });
+  }
 
   throw lastError;
 }

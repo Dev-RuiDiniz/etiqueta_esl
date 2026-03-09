@@ -1,5 +1,4 @@
 import { getMissingEslConfig } from '../config.js';
-import { listDeadLetters } from '../db/deadLetterRepo.js';
 import { sendJson } from '../utils/http.js';
 
 function toPositiveInt(raw, fallback) {
@@ -27,6 +26,7 @@ export function createEslRoutes({
   statusService,
   ledService,
   auditLogService,
+  deadLetterRepo,
   runJobsOnce
 }) {
   return async function route(req, res, url, body) {
@@ -58,13 +58,14 @@ export function createEslRoutes({
     }
 
     if (req.method === 'GET' && pathname === '/api/esl/status/summary') {
+      const summary = await statusService.getCachedSummary();
       sendJson(res, 200, {
         success: true,
         error_code: 0,
         error_msg: '',
         request_id: 'CACHE',
         received_at: new Date().toISOString(),
-        data: statusService.getCachedSummary()
+        data: summary
       });
       return true;
     }
@@ -162,6 +163,7 @@ export function createEslRoutes({
 
     if (req.method === 'GET' && pathname === '/api/esl/audit') {
       const limit = toPositiveInt(searchParams.get('limit'), 100);
+      const rows = await auditLogService.list(limit);
 
       sendJson(res, 200, {
         success: true,
@@ -169,13 +171,14 @@ export function createEslRoutes({
         error_msg: '',
         request_id: 'CACHE',
         received_at: new Date().toISOString(),
-        data: auditLogService.list(limit)
+        data: rows
       });
       return true;
     }
 
     if (req.method === 'GET' && pathname === '/api/esl/dead-letters') {
       const limit = toPositiveInt(searchParams.get('limit'), 100);
+      const rows = await deadLetterRepo.listDeadLetters(limit);
 
       sendJson(res, 200, {
         success: true,
@@ -183,7 +186,7 @@ export function createEslRoutes({
         error_msg: '',
         request_id: 'CACHE',
         received_at: new Date().toISOString(),
-        data: listDeadLetters(limit)
+        data: rows
       });
       return true;
     }

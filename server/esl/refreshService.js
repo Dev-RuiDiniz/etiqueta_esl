@@ -2,10 +2,11 @@ import { runWithRetry } from './eslRetryPolicy.js';
 import { toVendorDirectPayload } from './eslMapper.js';
 
 export class EslRefreshService {
-  constructor({ config, apiClient, auditLogService }) {
+  constructor({ config, apiClient, auditLogService, deadLetterRepo }) {
     this.config = config;
     this.apiClient = apiClient;
     this.auditLogService = auditLogService;
+    this.deadLetterRepo = deadLetterRepo;
     // Fila em memória para consolidar triggers e evitar excesso de bind_task.
     this.queuedEslCodes = new Set();
   }
@@ -38,10 +39,11 @@ export class EslRefreshService {
         payload,
         meta: { queued_count: this.queuedEslCodes.size }
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.bind_task',
       payload,
       request_id: result.request_id,
@@ -89,10 +91,11 @@ export class EslRefreshService {
         payload,
         meta: { count: items.length }
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.direct',
       payload,
       request_id: result.request_id,

@@ -1,48 +1,41 @@
-# Checklist de demonstração — Front-End ESL
+# Checklist de Demonstração — Sistema ESL (Frontend + BFF)
 
-## Roteiro da reunião
-1. **Dashboard**
-   - Mostrar os KPIs principais e o card de última atualização.
-   - Destacar a visão por corredor para etiquetas offline.
-2. **Etiquetas**
-   - Aplicar filtros por status, setor e corredor.
-   - Abrir “Ver detalhes” e apresentar o preview da etiqueta.
-3. **Atualizações**
-   - **Individual:** selecionar uma etiqueta, enviar atualização e acompanhar status.
-   - **Lote:** importar CSV, processar e executar envio das linhas.
-4. **Alertas**
-   - Filtrar por tipo/prioridade/status.
-   - Marcar um alerta como resolvido.
-5. **Histórico**
-   - Filtrar por período e SKU.
-   - Mostrar status e origem das atualizações.
+## 1. Preparação antes da reunião
 
-## Pontos de fala por tela
+1. Validar `.env` do cenário (`mock` ou `real`).
+2. Subir BFF (`npm run bff`) e frontend (`npm run dev`).
+3. Confirmar saúde do backend:
+   - `GET /healthz`
+   - `GET /readyz`
+4. Se demo em `postgres`, aplicar migração antes: `npm run bff:migrate`.
+5. Se auth estiver ativa, obter token por `POST /api/auth/login`.
 
-### Dashboard
-- Visão rápida da operação com indicadores principais.
-- Última atualização exibida no padrão de data e hora pt-BR.
-- Priorização por corredor com maior volume de offline.
+## 2. Roteiro de apresentação
 
-### Etiquetas
-- Consulta rápida por produto, SKU ou etiqueta.
-- Contexto completo: status, bateria e localização física.
-- Detalhe com visual da etiqueta para validação de preço e promoção.
+1. Dashboard
+   - Mostrar visão operacional e contexto de saúde.
+2. Etiquetas
+   - Demonstrar filtros, busca e detalhe.
+3. Atualizações
+   - Individual: alterar preço e acompanhar retorno.
+   - Lote: importar arquivo e processar envio.
+4. Alertas
+   - Filtrar e resolver um item.
+5. Histórico
+   - Demonstrar rastreabilidade por período/SKU.
+6. Integração técnica
+   - Mostrar endpoint `/api/esl/health`.
+   - Mostrar auditoria em `/api/esl/audit`.
 
-### Atualizações
-- Fluxo individual para ajustes imediatos de preço.
-- Fluxo em lote para operação em escala com CSV.
-- Feedback de status para acompanhar envio e confirmação.
+## 3. Pontos de fala recomendados
 
-### Alertas
-- Central de incidentes operacionais com filtros práticos.
-- Ação de resolução com retorno visual imediato.
-- Atalho para navegação direta até a etiqueta relacionada.
+- O frontend não acessa vendor diretamente; toda integração passa pelo BFF.
+- O BFF assina chamadas com `sign` e inclui `store_code` no padrão do fornecedor.
+- Há retry com dead-letter para falhas operacionais.
+- O backend expõe métricas técnicas em `/metrics` para monitoramento.
 
-### Histórico
-- Rastreabilidade de alterações por período e SKU.
-- Transparência de status e origem de cada atualização.
-- Apoio para auditoria rápida em atendimento operacional.
+## 4. Encerramento da demo
 
-## Observação
-- **Dados demonstrativos** para fins de apresentação.
+1. Recapitular fluxo ponta a ponta (produto -> bind -> refresh -> status).
+2. Apresentar limitações conhecidas e próximos passos.
+3. Registrar dúvidas do cliente para backlog.

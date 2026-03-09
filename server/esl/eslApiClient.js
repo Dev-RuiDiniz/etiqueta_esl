@@ -61,9 +61,11 @@ function normalizeResult(parsedBody, statusCode, requestId) {
 }
 
 export class EslApiClient {
-  constructor(config) {
+  constructor(config, { metrics = null, logger = console } = {}) {
     // Cliente HTTP único para API ESL, garantindo assinatura e padrão de resposta.
     this.config = config;
+    this.metrics = metrics;
+    this.logger = logger;
   }
 
   async get(path, query = {}, options = {}) {
@@ -79,6 +81,7 @@ export class EslApiClient {
 
     const includeStoreCode = options.includeStoreCode ?? true;
     const requestId = buildRequestId();
+    const startedAt = Date.now();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.requestTimeoutMs);
 
@@ -120,6 +123,10 @@ export class EslApiClient {
       const rawText = await response.text();
       const parsedBody = safeParseJson(rawText) ?? rawText;
 
+      const durationSeconds = (Date.now() - startedAt) / 1000;
+      const endpointLabel = `${method} ${normalizedPath}`;
+      this.metrics?.trackVendorRequest?.(endpointLabel, durationSeconds, response.status, response.status >= 400 ? 'vendor_http_error' : null);
+
       if (response.status >= 500) {
         const error = new Error(`ESL upstream HTTP ${response.status}`);
         error.code = 'ESL_UPSTREAM_5XX';
@@ -129,6 +136,12 @@ export class EslApiClient {
       }
 
       return normalizeResult(parsedBody, response.status, requestId);
+    } catch (error) {
+      const durationSeconds = (Date.now() - startedAt) / 1000;
+      const endpointLabel = `${method} ${normalizedPath}`;
+      this.metrics?.trackVendorRequest?.(endpointLabel, durationSeconds, Number(error?.statusCode ?? 500), error?.code ?? 'vendor_runtime_error');
+      this.logger.error({ err: error, endpoint: endpointLabel, request_id: requestId }, 'Vendor request failed');
+      throw error;
     } finally {
       clearTimeout(timeout);
     }

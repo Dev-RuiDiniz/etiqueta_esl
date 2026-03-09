@@ -1,4 +1,3 @@
-import { getStatusSummary, upsertStatusSnapshots } from '../db/eslStatusRepo.js';
 import { runWithRetry } from './eslRetryPolicy.js';
 import { fromVendorStatusRecord, toVendorQueryStatusPayload } from './eslMapper.js';
 
@@ -35,10 +34,12 @@ function normalizeCountData(result) {
 }
 
 export class EslStatusService {
-  constructor({ config, apiClient, auditLogService }) {
+  constructor({ config, apiClient, auditLogService, statusRepo, deadLetterRepo }) {
     this.config = config;
     this.apiClient = apiClient;
     this.auditLogService = auditLogService;
+    this.statusRepo = statusRepo;
+    this.deadLetterRepo = deadLetterRepo;
   }
 
   async syncStatus() {
@@ -50,10 +51,11 @@ export class EslStatusService {
         operation: 'esl.sync',
         payload
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.sync',
       payload,
       request_id: result.request_id,
@@ -73,12 +75,13 @@ export class EslStatusService {
         operation: 'esl.query_count',
         payload: {}
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
     const countData = normalizeCountData(result);
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.query_count',
       payload: {},
       request_id: result.request_id,
@@ -107,14 +110,15 @@ export class EslStatusService {
         operation: 'esl.query',
         payload: query
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
     // Normaliza payload do fornecedor e persiste snapshot para consumo rápido no dashboard.
     const snapshots = extractArrayFromResult(result).map((item) => fromVendorStatusRecord(item));
-    upsertStatusSnapshots(snapshots);
+    await this.statusRepo.upsertStatusSnapshots(snapshots);
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.query',
       payload: query,
       request_id: result.request_id,
@@ -140,14 +144,15 @@ export class EslStatusService {
         payload,
         meta: { count: esl_codes.length }
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
     // Consulta direcionada usada por validações pós-atualização e tela de detalhe.
     const snapshots = extractArrayFromResult(result).map((item) => fromVendorStatusRecord(item));
-    upsertStatusSnapshots(snapshots);
+    await this.statusRepo.upsertStatusSnapshots(snapshots);
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.query_status',
       payload,
       request_id: result.request_id,
@@ -163,8 +168,8 @@ export class EslStatusService {
     };
   }
 
-  getCachedSummary() {
-    return getStatusSummary();
+  async getCachedSummary() {
+    return this.statusRepo.getStatusSummary();
   }
 
   async pollAndCacheStatus({ pageSize = 100 } = {}) {
@@ -192,7 +197,7 @@ export class EslStatusService {
       error_msg: '',
       request_id: countResult.request_id,
       received_at: new Date().toISOString(),
-      data: this.getCachedSummary()
+      data: await this.getCachedSummary()
     };
   }
 }

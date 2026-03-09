@@ -1,23 +1,39 @@
-# Estabilizacao do Front-End ESL (2026-03-04)
+# Estabilização do Sistema ESL (2026-03-09)
 
 ## Objetivo
-Eliminar oscilacao da interface e tornar o ambiente mock previsivel para uso local e demonstracoes.
 
-## Mudancas aplicadas
-- Corrigido o fluxo de disparo do `useAsync` para evitar recarregamentos em loop.
-- Mantido tratamento seguro de erros assincros sem rejeicao nao tratada no `useEffect`.
-- Desativadas falhas aleatorias de mock por padrao na camada `simulateNetwork`.
-- Adicionada chave de controle `VITE_ENABLE_MOCK_FAILURE=true` para reativar falhas simuladas quando necessario.
+Consolidar a evolução do BFF para uma base mais robusta de operação: persistência relacional, autenticação/autorização, observabilidade e testes automatizados.
 
-## Arquivos alterados
-- `src/hooks/useAsync.ts`
-- `src/services/api.ts`
-- `package-lock.json`
+## Entregas consolidadas
 
-## Validacao executada
+- Persistência com `BFF_PERSISTENCE_MODE=memory|postgres`.
+- Migrações SQL versionadas para entidades operacionais.
+- Autenticação JWT interna com RBAC (`admin`, `operador`, `viewer`).
+- Logs estruturados (`pino`) e métricas (`prom-client`).
+- Endpoints de operação: `/healthz`, `/readyz`, `/metrics`.
+- Testes de contrato e auth com Vitest/Supertest.
+
+## Arquivos-chave atualizados
+
+- `server/index.js`
+- `server/config.js`
+- `server/auth/*`
+- `server/db/postgres/*`
+- `server/db/repositories/*`
+- `server/observability/*`
+- `server/tests/*`
+- `README.md`
+- `docs/SISTEMA_E_INTEGRACAO_ESL.md`
+- `docs/MANUAL_EXECUCAO_CLIENTE.md`
+
+## Validação executada
+
+- `npm run test:bff` (ok, com teste postgres condicional por `DATABASE_URL`)
 - `npm run lint` (ok)
 - `npm run build` (ok)
 
-## Operacao local
-- URL: `http://127.0.0.1:5173/`
-- Para parar servidor: `taskkill /PID <pid> /F`
+## Observações operacionais
+
+- Em produção, trocar segredos JWT e senha padrão do admin.
+- Em modo `postgres`, rodar `npm run bff:migrate` antes de iniciar o BFF.
+- Se `BFF_AUTH_ENABLED=true`, rotas `/api/esl/*` exigem bearer token.

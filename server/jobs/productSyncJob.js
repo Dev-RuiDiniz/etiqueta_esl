@@ -1,5 +1,5 @@
 // Job periódico para drenar a fila de produtos pendentes.
-export function startProductSyncJob({ productSyncService, intervalMs, logger = console }) {
+export function startProductSyncJob({ productSyncService, intervalMs, logger = console, metrics = null }) {
   let running = false;
 
   const timer = setInterval(async () => {
@@ -12,10 +12,14 @@ export function startProductSyncJob({ productSyncService, intervalMs, logger = c
     try {
       const result = await productSyncService.flushPendingUpserts(50);
       if (!result.success) {
-        logger.error('[job:productSync] failed', result);
+        logger.error({ result }, '[job:productSync] failed');
+        metrics?.trackJobRun?.('productSync', 'failed');
+      } else {
+        metrics?.trackJobRun?.('productSync', 'success');
       }
     } catch (error) {
-      logger.error('[job:productSync] crashed', error);
+      logger.error({ err: error }, '[job:productSync] crashed');
+      metrics?.trackJobRun?.('productSync', 'failed');
     } finally {
       running = false;
     }

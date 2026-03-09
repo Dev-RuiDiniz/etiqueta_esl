@@ -1,7 +1,5 @@
-import { listBindings } from '../db/eslBindingRepo.js';
-
 // Job de reconciliação para corrigir divergências entre vínculo interno e estado remoto.
-export function startReconciliationJob({ statusService, bindingService, refreshService, intervalMs, logger = console }) {
+export function startReconciliationJob({ statusService, bindingService, bindingRepo, refreshService, intervalMs, logger = console, metrics = null }) {
   let running = false;
 
   const timer = setInterval(async () => {
@@ -12,8 +10,9 @@ export function startReconciliationJob({ statusService, bindingService, refreshS
     running = true;
 
     try {
-      const bindings = listBindings();
+      const bindings = await bindingRepo.listBindings();
       if (bindings.length === 0) {
+        metrics?.trackJobRun?.('reconciliation', 'success');
         return;
       }
 
@@ -21,7 +20,8 @@ export function startReconciliationJob({ statusService, bindingService, refreshS
       const statusResult = await statusService.querySpecificStatus({ esl_codes: codes, page: 1, size: codes.length });
 
       if (!statusResult.success) {
-        logger.error('[job:reconciliation] status query failed', statusResult);
+        logger.error({ result: statusResult }, '[job:reconciliation] status query failed');
+        metrics?.trackJobRun?.('reconciliation', 'failed');
         return;
       }
 
@@ -38,19 +38,21 @@ export function startReconciliationJob({ statusService, bindingService, refreshS
         const actualProductCode = String(status.product_code ?? '');
 
         if (expectedProductCode && actualProductCode && expectedProductCode !== actualProductCode) {
-          logger.warn('[job:reconciliation] binding mismatch', {
+          logger.warn({
             esl_code: binding.esl_code,
             expected_product_code: expectedProductCode,
             actual_product_code: actualProductCode
-          });
+          }, '[job:reconciliation] binding mismatch');
 
           await bindingService.unbind(binding.esl_code);
           await bindingService.bind(binding);
           await refreshService.triggerRefresh();
         }
       }
+      metrics?.trackJobRun?.('reconciliation', 'success');
     } catch (error) {
-      logger.error('[job:reconciliation] crashed', error);
+      logger.error({ err: error }, '[job:reconciliation] crashed');
+      metrics?.trackJobRun?.('reconciliation', 'failed');
     } finally {
       running = false;
     }

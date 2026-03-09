@@ -1,33 +1,18 @@
-# Etiqueta ESL — Plataforma Operacional e Integração com API ESL
+# Etiqueta ESL — Plataforma de Operação e Integração GreenDisplay
 
-![Build](https://img.shields.io/badge/build-passing-brightgreen)
-![Lint](https://img.shields.io/badge/lint-eslint-informational)
-![Format](https://img.shields.io/badge/format-prettier-ff69b4)
+Sistema para operação de etiquetas eletrônicas de prateleira (ESL), com frontend React e BFF Node.js. O projeto suporta modo `mock` para demonstração e modo `real` com integração completa à API ESL do fornecedor.
 
-Aplicação para operação de **etiquetas eletrônicas de prateleira (ESL)** em ambiente de varejo, com suporte a modo mock para demonstração e modo real integrado via BFF com a API ESL (GreenDisplay).
+## 1. O que o sistema faz
 
----
+- Monitoramento de etiquetas (`online/offline`, bateria, AP, vínculo de produto).
+- Atualização de preço individual e em lote.
+- Bind/unbind de etiquetas com produtos e templates.
+- Trigger de refresh em fila consolidada.
+- Busca física de etiqueta por LED.
+- Auditoria operacional e dead-letter para falhas.
+- Jobs de sincronização, reconciliação e retenção.
 
-## 1. O que o sistema faz e para quem
-
-## Público-alvo
-
-- Operadores de loja
-- Supervisores de operação
-- Equipe técnica de integração/implantação
-
-## Capacidades principais
-
-- Monitoramento operacional de etiquetas (status e bateria)
-- Consulta de etiquetas com filtros avançados
-- Atualização de preço individual e em lote
-- Gestão de alertas operacionais
-- Histórico/auditoria de eventos
-- Integração real com API ESL via Backend BFF
-
----
-
-## 2. Arquitetura resumida e fluxo operacional
+## 2. Arquitetura resumida
 
 ```mermaid
 flowchart LR
@@ -35,123 +20,131 @@ A[Frontend React] -->|/api/esl/*| B[BFF Node.js]
 B -->|/api/{i_client_id} + sign| C[API ESL GreenDisplay]
 C --> D[Cloud ESL]
 D --> E[Base Station/AP]
-E --> F[Etiquetas ESL]
+E --> F[ESL Tags]
 F --> E --> D --> C --> B --> A
 ```
 
-### Resumo do fluxo
+## 3. Como o sistema funciona
 
-1. Operador executa ação na UI.
-2. Frontend envia comando para o BFF.
-3. BFF autentica/assina e chama API ESL.
-4. API ESL orquestra atualização nas etiquetas via AP.
-5. BFF consulta status e devolve resultado ao frontend.
+### Frontend
 
----
+- Stack: React 18 + Vite 6 + TypeScript.
+- Camada ESL em `src/services/esl/*`.
+- Tipos de contrato em `src/types/esl.ts`.
+- Polling operacional em `src/hooks/useEslStatus.ts`.
 
-## 3. Funcionalidades por módulo de tela
+### BFF
 
-## Dashboard (`/dashboard`)
+- Entrada: `server/index.js`.
+- Rotas de negócio: `server/esl/routes.js`.
+- Serviços ESL: `server/esl/*`.
+- Auth JWT/RBAC: `server/auth/*`.
+- Persistência por repositório: `server/db/repositories/*` (`memory` e `postgres`).
+- Migrações: `server/db/postgres/migrations/*`.
+- Jobs: `server/jobs/*`.
+- Observabilidade: `server/observability/*`.
 
-- KPIs operacionais
-- Visão de status geral
-- Apoio a monitoramento diário
+## 4. Funcionalidades por tela
 
-## Etiquetas (`/etiquetas`)
+- `Dashboard`: visão consolidada de operação.
+- `Etiquetas`: busca, filtros e status por etiqueta.
+- `Atualizações`: fluxo individual e em lote.
+- `Alertas`: acompanhamento de incidentes.
+- `Histórico`: trilha de eventos operacionais.
 
-- Filtro por status/categoria/corredor
-- Busca por etiqueta, SKU e produto
-- Modal de detalhes e preview visual
+## 5. Endpoints do BFF
 
-## Atualizações (`/atualizacoes/individual` e `/atualizacoes/lote`)
-
-- Envio individual de atualização de preço
-- Processamento de CSV para lote
-- Acompanhamento de status e retry
-
-## Alertas (`/alertas`)
-
-- Listagem de incidentes operacionais
-- Filtros por tipo/prioridade/status
-- Marcação de resolução
-
-## Histórico (`/historico`)
-
-- Rastreabilidade de eventos
-- Filtros por período, SKU, etiqueta e status
-
----
-
-## 4. Como o sistema funciona internamente
-
-## Frontend
-
-- Stack: React 18 + Vite 6 + TypeScript 5 + Bootstrap 5
-- Contratos de integração em `src/types/esl.ts`
-- Serviços ESL em `src/services/esl/*`
-- Hook de monitoramento em `src/hooks/useEslStatus.ts`
-
-## Backend BFF
-
-- Runtime: Node.js (ESM)
-- Entrada principal: `server/index.js`
-- Rotas: `server/esl/routes.js`
-- Serviços: `server/esl/*`
-- Jobs: `server/jobs/*`
-- Repositórios: `server/db/*`
-
-## Persistência (estado atual)
-
-- V1 em memória para bindings, status, auditoria e dead-letter.
-- Não substitui banco persistente em produção de alta escala.
-
----
-
-## 5. Integração ESL de ponta a ponta
-
-## Modos de operação
-
-- **Mock (`VITE_API_MODE=mock`)**: usa dados simulados.
-- **Real (`VITE_API_MODE=real`)**: usa BFF e API vendor.
-
-## Endpoints internos do BFF (`/api/esl/*`)
+### Operação ESL (`/api/esl/*`)
 
 | Método | Rota | Uso |
 |---|---|---|
-| GET | `/api/esl/health` | Saúde e configuração da integração |
+| GET | `/api/esl/health` | Saúde da integração ESL |
 | GET | `/api/esl/templates` | Consulta templates |
-| GET | `/api/esl/status/summary` | Resumo online/offline |
-| GET | `/api/esl/status` | Consulta status paginado |
-| POST | `/api/esl/status/sync` | Força sincronização de status |
-| POST | `/api/esl/status/query` | Consulta status por lista |
-| POST | `/api/esl/products/upsert` | Upsert de produto |
+| GET | `/api/esl/status/summary` | Resumo de status |
+| GET | `/api/esl/status` | Consulta paginada |
+| POST | `/api/esl/status/sync` | Forçar sync |
+| POST | `/api/esl/status/query` | Consulta por lista |
+| POST | `/api/esl/products/upsert` | Upsert unitário |
 | POST | `/api/esl/products/upsert-bulk` | Upsert em lote |
-| POST | `/api/esl/bind` | Vincular etiqueta-produto |
-| POST | `/api/esl/bind/bulk` | Vincular em lote |
-| POST | `/api/esl/unbind` | Desvincular etiqueta |
+| POST | `/api/esl/bind` | Bind unitário |
+| POST | `/api/esl/bind/bulk` | Bind em lote |
+| POST | `/api/esl/unbind` | Unbind |
 | POST | `/api/esl/refresh/trigger` | Trigger de refresh |
-| POST | `/api/esl/led/search` | Busca física por LED |
+| POST | `/api/esl/led/search` | LED search |
 | POST | `/api/esl/direct` | Atualização direta |
 | GET | `/api/esl/audit` | Auditoria |
-| GET | `/api/esl/dead-letters` | Falhas pendentes |
-| POST | `/api/esl/jobs/run` | Execução manual de ciclo de jobs |
+| GET | `/api/esl/dead-letters` | Dead-letter |
+| POST | `/api/esl/jobs/run` | Rodar ciclo de jobs manualmente |
 
-## Fluxo real de atualização (resumo)
+### Autenticação e operação BFF
 
-1. `products/upsert`
-2. `refresh/trigger`
-3. `status/query` para confirmação
+| Método | Rota | Uso |
+|---|---|---|
+| POST | `/api/auth/login` | Emite access/refresh token |
+| POST | `/api/auth/refresh` | Renova token |
+| POST | `/api/auth/logout` | Revoga refresh token |
+| GET | `/healthz` | Liveness do processo |
+| GET | `/readyz` | Readiness (config + DB + auth) |
+| GET | `/metrics` | Métricas Prometheus |
 
----
+## 6. Segurança (JWT + RBAC)
 
-## 6. Quickstart (mock e real)
+Quando `BFF_AUTH_ENABLED=true`, rotas `/api/esl/*` exigem bearer token.
 
-## Pré-requisitos
+Perfis:
 
-- Node.js LTS (20+ recomendado)
+- `admin`: acesso total, incluindo `/api/esl/jobs/run` e `/api/esl/dead-letters`.
+- `operador`: operações de negócio e monitoramento.
+- `viewer`: leitura (`GET`) somente.
+
+Importante:
+
+- Usuário admin padrão é criado no startup (`BFF_DEFAULT_ADMIN_EMAIL` e `BFF_DEFAULT_ADMIN_PASSWORD`).
+- Em produção, altere segredos JWT e senha padrão antes do go-live.
+
+## 7. Persistência
+
+Modo configurável por `BFF_PERSISTENCE_MODE`:
+
+- `memory`: desenvolvimento rápido.
+- `postgres`: persistência relacional.
+
+Tabelas principais (PostgreSQL):
+
+- `esl_bindings`
+- `esl_status_snapshots`
+- `esl_command_log`
+- `dead_letters`
+- `users`
+- `refresh_tokens`
+
+Migrações:
+
+- `npm run bff:migrate`
+- `npm run bff:migrate:down`
+
+## 8. Observabilidade
+
+- Logs estruturados JSON com `pino`.
+- Métricas Prometheus com `prom-client`:
+  - latência e volume HTTP do BFF
+  - latência/erros de chamadas vendor
+  - execuções de jobs
+  - tamanho de fila de refresh e dead-letter
+- Health checks:
+  - `/healthz`
+  - `/readyz`
+  - `/metrics`
+
+## 9. Quickstart
+
+### Pré-requisitos
+
+- Node.js 20+
 - npm
+- PostgreSQL (opcional, quando usar `postgres`)
 
-## Instalação
+### Instalação
 
 ```bash
 git clone <url-do-repositorio>
@@ -159,14 +152,12 @@ cd etiqueta_esl
 npm install
 ```
 
-## 6.1 Executar em modo mock
+### Modo mock (rápido)
 
 `.env`:
 
 ```env
 VITE_API_MODE=mock
-VITE_FORCE_API_ERROR=false
-VITE_ENABLE_MOCK_FAILURE=false
 ```
 
 Execução:
@@ -175,18 +166,20 @@ Execução:
 npm run dev
 ```
 
-## 6.2 Executar em modo real
+### Modo real com BFF + memória
 
-`.env`:
+`.env` mínimo:
 
 ```env
 VITE_API_MODE=real
 VITE_BFF_TARGET=http://127.0.0.1:8787
 
 BFF_PORT=8787
-ESL_ENABLE_JOBS=true
+BFF_PERSISTENCE_MODE=memory
+BFF_AUTH_ENABLED=false
+
 ESL_HOST=https://esl.greendisplay.cn
-ESL_CLIENT_ID=seu_app_key
+ESL_CLIENT_ID=seu_client_id
 ESL_SIGN=seu_sign
 ESL_STORE_CODE=001
 ESL_IS_BASE64=0
@@ -199,82 +192,98 @@ npm run bff
 npm run dev
 ```
 
-Validação de saúde do BFF:
+### Modo real com PostgreSQL
 
-```bash
-curl http://127.0.0.1:8787/api/esl/health
+`.env` adicional:
+
+```env
+BFF_PERSISTENCE_MODE=postgres
+DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/etiqueta_esl
 ```
 
----
+Aplicar migrações e iniciar:
 
-## 7. Variáveis de ambiente
+```bash
+npm run bff:migrate
+npm run bff
+npm run dev
+```
 
-| Variável | Camada | Finalidade | Exemplo |
-|---|---|---|---|
-| `VITE_API_MODE` | Frontend | Define modo `mock` ou `real` | `mock` |
-| `VITE_FORCE_API_ERROR` | Frontend | Força erro simulado | `false` |
-| `VITE_ENABLE_MOCK_FAILURE` | Frontend | Falha aleatória mock | `false` |
-| `VITE_BFF_TARGET` | Frontend/Vite | Proxy para BFF | `http://127.0.0.1:8787` |
-| `BFF_PORT` | BFF | Porta do backend | `8787` |
-| `ESL_ENABLE_JOBS` | BFF | Habilita jobs de fundo | `true` |
-| `ESL_HOST` | BFF | Host API vendor | `https://esl.greendisplay.cn` |
-| `ESL_CLIENT_ID` | BFF | App key no path `/api/{i_client_id}` | `default` |
-| `ESL_SIGN` | BFF | Assinatura exigida pela API | `***` |
-| `ESL_STORE_CODE` | BFF | Loja/filial padrão | `001` |
-| `ESL_IS_BASE64` | BFF | Flag vendor de codificação | `0` |
+## 10. Variáveis de ambiente
 
----
+| Variável | Finalidade | Exemplo |
+|---|---|---|
+| `VITE_API_MODE` | `mock` ou `real` no frontend | `real` |
+| `VITE_BFF_TARGET` | Proxy do Vite para o BFF | `http://127.0.0.1:8787` |
+| `VITE_FORCE_API_ERROR` | Força erro no mock | `false` |
+| `VITE_ENABLE_MOCK_FAILURE` | Falhas aleatórias no mock | `false` |
+| `BFF_PORT` | Porta HTTP do BFF | `8787` |
+| `LOG_LEVEL` | Nível de log do BFF | `info` |
+| `ESL_ENABLE_JOBS` | Habilita jobs periódicos | `true` |
+| `ESL_RETENTION_INTERVAL_MS` | Intervalo do job de retenção | `43200000` |
+| `ESL_HOST` | Host da API vendor | `https://esl.greendisplay.cn` |
+| `ESL_CLIENT_ID` | `i_client_id` da API | `default` |
+| `ESL_SIGN` | Assinatura exigida pelo vendor | `***` |
+| `ESL_STORE_CODE` | Código da loja | `001` |
+| `ESL_IS_BASE64` | Flag vendor | `0` |
+| `BFF_PERSISTENCE_MODE` | `memory` ou `postgres` | `postgres` |
+| `DATABASE_URL` | Conexão PostgreSQL | `postgres://...` |
+| `BFF_AUTH_ENABLED` | Ativa JWT/RBAC | `true` |
+| `JWT_ACCESS_SECRET` | Segredo access token | `***` |
+| `JWT_REFRESH_SECRET` | Segredo refresh token | `***` |
+| `JWT_ACCESS_TTL` | TTL do access token | `15m` |
+| `JWT_REFRESH_TTL` | TTL do refresh token | `7d` |
+| `BFF_DEFAULT_ADMIN_EMAIL` | Email admin bootstrap | `admin@etiqueta.local` |
+| `BFF_DEFAULT_ADMIN_PASSWORD` | Senha admin bootstrap | `Admin@123` |
+| `METRICS_ENABLED` | Liga endpoint e coletores | `true` |
+| `ESL_COMMAND_LOG_RETENTION_DAYS` | Retenção de auditoria | `30` |
+| `ESL_DEAD_LETTER_RETENTION_DAYS` | Retenção de dead-letter | `30` |
 
-## 8. Scripts e comandos de operação
+## 11. Scripts
 
-| Comando | Descrição |
+| Comando | Uso |
 |---|---|
-| `npm run dev` | Inicia frontend em desenvolvimento |
-| `npm run bff` | Inicia Backend BFF da integração ESL |
-| `npm run build` | Build de produção (TypeScript + Vite) |
-| `npm run preview` | Visualiza build local |
-| `npm run lint` | Executa ESLint |
-| `npm run format` | Formata com Prettier |
-| `npm run format:check` | Verifica formatação |
+| `npm run dev` | Frontend em desenvolvimento |
+| `npm run bff` | Inicia o BFF |
+| `npm run bff:migrate` | Aplica migrações PostgreSQL |
+| `npm run bff:migrate:down` | Rollback da última migração |
+| `npm run test:bff` | Testes Vitest/Supertest do BFF |
+| `npm run lint` | Lint do projeto |
+| `npm run build` | Build de produção |
+| `npm run preview` | Preview do build |
+| `npm run format` | Formatação automática |
+| `npm run format:check` | Validação de formatação |
 
----
+## 12. Testes
 
-## 9. Troubleshooting comum
+Cobertura atual de automação do BFF:
 
-## BFF inicia em modo degradado
+- Contrato de resposta e comportamento base.
+- Login/refresh/logout com JWT.
+- RBAC por rota e perfil.
+- Persistência PostgreSQL (executa quando `DATABASE_URL` estiver disponível).
 
-- Verifique variáveis obrigatórias (`ESL_HOST`, `ESL_CLIENT_ID`, `ESL_SIGN`, `ESL_STORE_CODE`).
+Execução:
 
-## Frontend não carrega dados reais
+```bash
+npm run test:bff
+```
 
-- Verifique `VITE_API_MODE=real`.
-- Verifique BFF ativo em `BFF_PORT`.
-- Verifique `VITE_BFF_TARGET`.
+## 13. Troubleshooting
 
-## Atualização falha ou não confirma
+- `readyz` em `503`: verificar `ESL_*`, `DATABASE_URL` (modo postgres), segredos JWT (quando auth ativo).
+- `401` em `/api/esl/*`: token ausente/inválido com `BFF_AUTH_ENABLED=true`.
+- `403` em `/api/esl/*`: perfil sem permissão para a rota.
+- Falha de refresh/status: revisar conectividade AP/Base Station e disponibilidade vendor.
 
-- Verifique se etiqueta está offline.
-- Verifique conectividade AP/Base Station.
-- Verifique credenciais e assinatura vendor.
+## 14. Documentação complementar
 
-## Erros de payload obrigatório
+- Documento técnico detalhado: `docs/SISTEMA_E_INTEGRACAO_ESL.md`
+- Manual operacional do cliente: `docs/MANUAL_EXECUCAO_CLIENTE.md`
+- Checklist de demo: `docs/DEMO_CHECKLIST.md`
+- Estabilização histórica: `docs/ESTABILIZACAO_2026-03-04.md`
 
-- Revisar campos enviados para produto/bind/refresh.
-- Confirmar `store_code` correto.
-
----
-
-## 10. Referências e documentação complementar
-
-- Documento técnico completo da integração:
-  - `docs/SISTEMA_E_INTEGRACAO_ESL.md`
-- Manual do cliente (operação + setup):
-  - `docs/MANUAL_EXECUCAO_CLIENTE.md`
-- Materiais legados do projeto:
-  - `docs/DEMO_CHECKLIST.md`
-  - `docs/ESTABILIZACAO_2026-03-04.md`
-
-## Documentação vendor base
+Base vendor utilizada:
 
 - `ESL manual.pdf`
 - `Base Station WIFI Configuration.pdf`

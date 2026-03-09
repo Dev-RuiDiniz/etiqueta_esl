@@ -1,13 +1,14 @@
-import { getBindingByEslCode, removeBinding, upsertBinding } from '../db/eslBindingRepo.js';
 import { runWithRetry } from './eslRetryPolicy.js';
 import { toVendorBindMultiplePayload, toVendorBindPayload } from './eslMapper.js';
 
 export class EslBindingService {
-  constructor({ config, apiClient, refreshService, auditLogService }) {
+  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, deadLetterRepo }) {
     this.config = config;
     this.apiClient = apiClient;
     this.refreshService = refreshService;
     this.auditLogService = auditLogService;
+    this.bindingRepo = bindingRepo;
+    this.deadLetterRepo = deadLetterRepo;
   }
 
   async bind(binding) {
@@ -20,10 +21,11 @@ export class EslBindingService {
         payload,
         meta: { esl_code: payload.f1, product_code: payload.f2 }
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.bind',
       payload,
       request_id: result.request_id,
@@ -35,7 +37,7 @@ export class EslBindingService {
 
     if (result.success) {
       // Persistimos vínculo localmente para reconciliação e monitoramento.
-      upsertBinding({
+      await this.bindingRepo.upsertBinding({
         esl_code: binding.esl_code,
         product_code: binding.product_code,
         template_id: binding.template_id
@@ -56,10 +58,11 @@ export class EslBindingService {
         payload,
         meta: { count: bindings.length }
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.bind_multiple',
       payload,
       request_id: result.request_id,
@@ -71,7 +74,7 @@ export class EslBindingService {
 
     if (result.success) {
       for (const binding of bindings) {
-        upsertBinding(binding);
+        await this.bindingRepo.upsertBinding(binding);
       }
 
       this.refreshService.enqueueRefresh(bindings.map((item) => item.esl_code));
@@ -92,10 +95,11 @@ export class EslBindingService {
         payload,
         meta: { esl_code: eslCode }
       },
-      this.config
+      this.config,
+      { deadLetterRepo: this.deadLetterRepo }
     );
 
-    this.auditLogService.record({
+    await this.auditLogService.record({
       operation: 'esl.unbind',
       payload,
       request_id: result.request_id,
@@ -107,7 +111,7 @@ export class EslBindingService {
 
     if (result.success) {
       // Remove vínculo local e agenda atualização para refletir no display.
-      removeBinding(eslCode);
+      await this.bindingRepo.removeBinding(eslCode);
       this.refreshService.enqueueRefresh([eslCode]);
     }
 
@@ -115,6 +119,6 @@ export class EslBindingService {
   }
 
   getBinding(eslCode) {
-    return getBindingByEslCode(eslCode);
+    return this.bindingRepo.getBindingByEslCode(eslCode);
   }
 }

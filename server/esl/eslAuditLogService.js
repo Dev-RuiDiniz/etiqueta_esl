@@ -1,11 +1,13 @@
-import { addCommandLog, listCommandLogs } from '../db/eslCommandLogRepo.js';
-
 export class EslAuditLogService {
+  constructor({ commandLogRepo }) {
+    this.commandLogRepo = commandLogRepo;
+  }
+
   record(entry) {
-    return addCommandLog(entry);
+    return this.commandLogRepo.addCommandLog(entry);
   }
 
   list(limit = 100) {
-    return listCommandLogs(limit);
+    return this.commandLogRepo.listCommandLogs(limit);
   }
 }

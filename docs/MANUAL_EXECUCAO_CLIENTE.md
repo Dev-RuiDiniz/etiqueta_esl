@@ -1,65 +1,46 @@
 # Manual de Execução do Sistema (Cliente)
 
-## 1. Objetivo do manual
+## 1. Objetivo
 
-Este manual orienta o cliente na **instalação, configuração e operação diária** do sistema de etiquetas eletrônicas de prateleira (ESL), incluindo uso das telas e ações operacionais principais.
+Este manual orienta instalação, configuração, inicialização e operação diária do sistema ESL.
 
-## Público-alvo
+Perfil recomendado:
 
-- Operadores de loja
-- Supervisores de operação
-- Equipe técnica de implantação/suporte
-
----
+- Operador de loja
+- Supervisor operacional
+- Técnico de implantação/suporte
 
 ## 2. Pré-requisitos
 
-- Computador com Windows, macOS ou Linux.
-- Node.js LTS (recomendado 20+).
-- NPM instalado.
-- Acesso ao repositório do sistema.
-- (Modo real) Credenciais da API ESL:
-  - `ESL_HOST`
-  - `ESL_CLIENT_ID`
-  - `ESL_SIGN`
-  - `ESL_STORE_CODE`
+- Node.js 20+.
+- npm.
+- Acesso ao repositório.
+- Para modo real: credenciais vendor (`ESL_HOST`, `ESL_CLIENT_ID`, `ESL_SIGN`, `ESL_STORE_CODE`).
+- Para PostgreSQL: instância de banco disponível e `DATABASE_URL` válido.
 
----
-
-## 3. Instalação e configuração do ambiente
-
-1. Clonar repositório:
+## 3. Instalação
 
 ```bash
 git clone <url-do-repositorio>
 cd etiqueta_esl
-```
-
-2. Instalar dependências:
-
-```bash
 npm install
 ```
 
-3. Criar arquivo de ambiente local com base no exemplo:
+Criar `.env`:
 
 ```bash
 copy .env.example .env
 ```
 
-> Em Linux/macOS:
+No Linux/macOS:
 
 ```bash
 cp .env.example .env
 ```
 
----
+## 4. Configuração do ambiente
 
-## 4. Configuração do `.env` (mock e real)
-
-## 4.1 Modo demonstração (mock)
-
-Use quando quiser validar interface e fluxo sem integração real.
+### 4.1 Modo mock (demonstração)
 
 ```env
 VITE_API_MODE=mock
@@ -67,188 +48,210 @@ VITE_FORCE_API_ERROR=false
 VITE_ENABLE_MOCK_FAILURE=false
 ```
 
-## 4.2 Modo integração real
-
-Use quando for integrar com API ESL do fornecedor.
+### 4.2 Modo real com BFF (memória)
 
 ```env
 VITE_API_MODE=real
 VITE_BFF_TARGET=http://127.0.0.1:8787
 
 BFF_PORT=8787
-ESL_ENABLE_JOBS=true
+BFF_PERSISTENCE_MODE=memory
+BFF_AUTH_ENABLED=false
+LOG_LEVEL=info
+METRICS_ENABLED=true
+
 ESL_HOST=https://esl.greendisplay.cn
-ESL_CLIENT_ID=seu_app_key
+ESL_CLIENT_ID=seu_client_id
 ESL_SIGN=seu_sign
 ESL_STORE_CODE=001
 ESL_IS_BASE64=0
+ESL_ENABLE_JOBS=true
 ```
 
----
+### 4.3 Modo real com PostgreSQL
 
-## 5. Inicialização dos serviços e validação inicial
+Adicionar:
 
-## 5.1 Subir backend BFF
+```env
+BFF_PERSISTENCE_MODE=postgres
+DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/etiqueta_esl
+```
+
+Aplicar migração:
+
+```bash
+npm run bff:migrate
+```
+
+### 4.4 Ativando autenticação JWT (opcional)
+
+```env
+BFF_AUTH_ENABLED=true
+JWT_ACCESS_SECRET=troque_este_valor
+JWT_REFRESH_SECRET=troque_este_valor
+JWT_ACCESS_TTL=15m
+JWT_REFRESH_TTL=7d
+BFF_DEFAULT_ADMIN_EMAIL=admin@etiqueta.local
+BFF_DEFAULT_ADMIN_PASSWORD=TroqueEstaSenha!
+```
+
+Importante:
+
+- Com auth ativa, rotas `/api/esl/*` passam a exigir token bearer.
+
+## 5. Inicialização dos serviços
+
+Terminal 1 (BFF):
 
 ```bash
 npm run bff
 ```
 
-Validação rápida de saúde do BFF (opcional):
-
-```bash
-curl http://127.0.0.1:8787/api/esl/health
-```
-
-## 5.2 Subir frontend
-
-Em outro terminal:
+Terminal 2 (frontend):
 
 ```bash
 npm run dev
 ```
 
-Acessar URL exibida no terminal (normalmente `http://127.0.0.1:5173`).
+## 6. Validação inicial
 
-## 5.3 Verificar qualidade (opcional)
+Com BFF ativo:
 
 ```bash
-npm run lint
-npm run build
+curl http://127.0.0.1:8787/healthz
+curl http://127.0.0.1:8787/readyz
+curl http://127.0.0.1:8787/metrics
 ```
 
----
+Validação UI:
 
-## 6. Guia de uso por tela
+- Abrir URL do Vite (normalmente `http://127.0.0.1:5173`).
+- Conferir carregamento das telas principais.
 
-## 6.1 Dashboard
+## 7. Guia de uso por tela
 
-- Exibe indicadores gerais da operação.
-- Use para visão rápida de saúde do parque de etiquetas.
+### Dashboard
 
-## 6.2 Etiquetas
+- Acompanhar visão geral de operação.
+- Verificar sinais de degradação.
 
-- Pesquise por etiqueta, SKU ou produto.
-- Aplique filtros por status/categoria/corredor.
-- Abra detalhes para revisar dados e preview da etiqueta.
+### Etiquetas
 
-## 6.3 Atualizações
+- Buscar por etiqueta, SKU e produto.
+- Filtrar por status.
+- Abrir detalhe para diagnóstico.
 
-### Atualização individual
+### Atualizações
 
-- Escolha uma etiqueta.
-- Informe novo preço.
-- Envie atualização.
-- Acompanhe status (`SENT`, `CONFIRMED`, `FAILED`).
+- Individual: atualização de preço pontual.
+- Lote: processamento de múltiplas atualizações via arquivo.
 
-### Atualização em lote
+### Alertas
 
-- Faça upload do CSV.
-- Processe as linhas.
-- Execute envio em lote.
-- Reenvie linhas com falha quando necessário.
+- Acompanhar incidentes.
+- Priorizar e marcar resolução.
 
-## 6.4 Alertas
+### Histórico
 
-- Filtre alertas por tipo, prioridade e status.
-- Marque alertas como resolvidos após ação operacional.
+- Rastrear eventos por período, SKU, etiqueta e status.
 
-## 6.5 Histórico
+## 8. Procedimentos operacionais principais
 
-- Consulte trilha de eventos por período, SKU e etiqueta.
-- Use para auditoria de alterações operacionais.
+### 8.1 Atualização individual de preço
 
----
+1. Entrar em `Atualizações > Individual`.
+2. Selecionar etiqueta/produto.
+3. Informar preço.
+4. Confirmar envio.
+5. Validar status final.
 
-## 7. Procedimentos operacionais principais
+### 8.2 Atualização em lote
 
-## 7.1 Atualização individual de preço
+1. Entrar em `Atualizações > Lote`.
+2. Importar arquivo.
+3. Validar dados.
+4. Executar envio.
+5. Reprocessar falhas.
 
-1. Ir em `Atualizações > Individual`.
-2. Selecionar etiqueta.
-3. Informar novo preço.
-4. Enviar.
-5. Confirmar status final.
-
-## 7.2 Atualização em lote
-
-1. Ir em `Atualizações > Lote`.
-2. Importar CSV no layout esperado.
-3. Processar lote.
-4. Enviar.
-5. Executar retry nas linhas com erro.
-
-## 7.3 Consulta de status ESL
+### 8.3 Consulta de status ESL
 
 1. Ir em `Etiquetas`.
-2. Filtrar por `ONLINE`/`OFFLINE`.
-3. Verificar bateria e localização.
+2. Aplicar filtro `ONLINE`/`OFFLINE`.
+3. Verificar bateria e vínculo.
 
-## 7.4 Ações básicas de recuperação
+### 8.4 Busca física por LED
 
-- Reenviar atualização com falha.
-- Revisar se etiqueta está offline.
-- Verificar se Base Station/AP está ativa e em bridge com Wi-Fi da loja.
-- Confirmar credenciais e variáveis `.env` no modo real.
+1. Selecionar etiqueta alvo.
+2. Disparar ação de LED.
+3. Confirmar identificação em loja.
 
----
+### 8.5 Recuperação básica
 
-## 8. Erros comuns e resolução
+1. Validar `/readyz`.
+2. Conferir dead-letter no endpoint `/api/esl/dead-letters`.
+3. Executar ciclo manual de jobs em `/api/esl/jobs/run` (perfil admin).
+4. Validar reconciliação de vínculo.
 
-## 8.1 BFF não inicia
+## 9. Uso de autenticação via API (quando habilitado)
 
-- Verifique se Node.js está instalado.
-- Verifique porta `BFF_PORT` já em uso.
-- Confirme variáveis obrigatórias (`ESL_HOST`, `ESL_CLIENT_ID`, `ESL_SIGN`, `ESL_STORE_CODE`).
+Login:
 
-## 8.2 Frontend não carrega dados reais
+```bash
+curl -X POST http://127.0.0.1:8787/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@etiqueta.local","password":"TroqueEstaSenha!"}'
+```
 
-- Confirme `VITE_API_MODE=real`.
-- Confirme BFF rodando.
-- Confirme `VITE_BFF_TARGET`.
+Usar token:
 
-## 8.3 Atualização fica com falha
+```bash
+curl http://127.0.0.1:8787/api/esl/health \
+  -H "Authorization: Bearer <access_token>"
+```
 
-- Verifique status da etiqueta (offline).
-- Verifique conectividade de AP/Base Station.
-- Verifique assinatura/credenciais da API vendor.
+Refresh:
 
-## 8.4 API responde erro de campo obrigatório
+```bash
+curl -X POST http://127.0.0.1:8787/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token":"<refresh_token>"}'
+```
 
-- Revisar payload enviado (produto, bind, refresh).
-- Revisar `store_code` configurado.
+## 10. Erros comuns e solução
 
----
+- `readyz = 503`:
+  - revisar variáveis `ESL_*`
+  - revisar `DATABASE_URL` no modo postgres
+  - revisar segredos JWT se auth estiver ativa
+- `401 Unauthorized`:
+  - token ausente/expirado/inválido
+- `403 Forbidden`:
+  - perfil sem permissão para a rota
+- Falhas recorrentes de atualização:
+  - verificar conectividade AP/Base Station
+  - verificar disponibilidade da API vendor
+  - analisar dead-letter e auditoria
 
-## 9. Checklist de operação diária
+## 11. Checklist diário de operação
 
-1. BFF e frontend iniciados.
-2. Health do BFF OK.
-3. Dashboard sem erros críticos.
-4. Verificação de etiquetas offline.
-5. Execução das atualizações do dia.
-6. Tratamento de alertas.
-7. Conferência de histórico.
+1. Subir BFF e frontend.
+2. Validar `/healthz` e `/readyz`.
+3. Verificar alertas e etiquetas offline.
+4. Executar atualizações programadas.
+5. Revisar falhas em dead-letter.
+6. Confirmar histórico de operações críticas.
 
----
+## 12. Checklist para demonstração
 
-## 10. Checklist de abertura para demonstração/cliente
+1. Definir cenário (`mock` ou `real`).
+2. Validar dados de demonstração e filtros.
+3. Demonstrar atualização individual e lote.
+4. Demonstrar consulta de status e LED search.
+5. Mostrar auditoria e endpoint de saúde.
 
-1. Configurar modo `mock` (demo) ou `real` (integração).
-2. Subir `npm run bff` e `npm run dev`.
-3. Validar telas principais:
-- Dashboard
-- Etiquetas
-- Atualizações (individual/lote)
-- Alertas
-- Histórico
-4. Preparar cenário com filtros e atualização de preço.
-5. Conferir estabilidade visual e mensagens de erro.
+## 13. Referências
 
----
-
-## Referências
-
+- `README.md`
 - `docs/SISTEMA_E_INTEGRACAO_ESL.md`
 - `docs/DEMO_CHECKLIST.md`
 - `docs/ESTABILIZACAO_2026-03-04.md`

@@ -1,5 +1,5 @@
 // Job periódico para disparar bind_task quando existir fila de refresh.
-export function startRefreshTriggerJob({ refreshService, intervalMs, logger = console }) {
+export function startRefreshTriggerJob({ refreshService, intervalMs, logger = console, metrics = null }) {
   let running = false;
 
   const timer = setInterval(async () => {
@@ -12,10 +12,14 @@ export function startRefreshTriggerJob({ refreshService, intervalMs, logger = co
     try {
       const result = await refreshService.dispatchQueuedRefresh();
       if (!result.success) {
-        logger.error('[job:refreshTrigger] failed', result);
+        logger.error({ result }, '[job:refreshTrigger] failed');
+        metrics?.trackJobRun?.('refreshTrigger', 'failed');
+      } else {
+        metrics?.trackJobRun?.('refreshTrigger', 'success');
       }
     } catch (error) {
-      logger.error('[job:refreshTrigger] crashed', error);
+      logger.error({ err: error }, '[job:refreshTrigger] crashed');
+      metrics?.trackJobRun?.('refreshTrigger', 'failed');
     } finally {
       running = false;
     }
