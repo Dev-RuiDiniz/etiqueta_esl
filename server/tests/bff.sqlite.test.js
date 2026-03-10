@@ -1,30 +1,17 @@
 import { createServer } from 'node:http';
-import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import { join } from 'node:path';
 import supertest from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createBffRuntime } from '../index.js';
 
-const DATABASE_URL = (process.env.DATABASE_URL ?? '').trim();
-const hasDatabase = Boolean(DATABASE_URL);
 const activeContexts = [];
 
-function ensureMigrationsUp() {
-  const result = spawnSync('node', ['server/scripts/migrate.js', 'up'], {
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      DATABASE_URL
-    },
-    encoding: 'utf8'
-  });
-
-  if (result.status !== 0) {
-    throw new Error(`Migration failed: ${result.stderr || result.stdout}`);
-  }
-}
-
-async function createPostgresContext() {
+async function createSqliteContext() {
+  const dataDir = mkdtempSync(join(os.tmpdir(), 'etiqueta-bff-sqlite-'));
   const originalFetch = globalThis.fetch;
+
   globalThis.fetch = vi.fn(async () => ({
     status: 200,
     text: async () => JSON.stringify({ error_code: 0, error_msg: '' })
@@ -34,8 +21,9 @@ async function createPostgresContext() {
     configOverrides: {
       jobsEnabled: false,
       metricsEnabled: true,
-      persistenceMode: 'postgres',
-      databaseUrl: DATABASE_URL,
+      persistenceMode: 'sqlite',
+      dataDir,
+      backupEnabled: false,
       authEnabled: false,
       eslHost: 'https://vendor.local',
       clientId: 'default',
@@ -53,6 +41,7 @@ async function createPostgresContext() {
     async close() {
       await new Promise((resolve) => server.close(() => resolve()));
       await runtime.stopAll();
+      rmSync(dataDir, { recursive: true, force: true });
       globalThis.fetch = originalFetch;
     }
   };
@@ -68,19 +57,19 @@ afterEach(async () => {
   }
 });
 
-describe.skipIf(!hasDatabase)('PostgreSQL persistence', () => {
-  it('persiste bind no banco e mantém /readyz saudável após migrações', async () => {
-    ensureMigrationsUp();
-    const ctx = await createPostgresContext();
+describe('SQLite persistence runtime', () => {
+  it('keeps /readyz healthy and persists bind operations to local sqlite file', async () => {
+    const ctx = await createSqliteContext();
 
     const readyResponse = await ctx.request.get('/readyz');
     expect(readyResponse.status).toBe(200);
+    expect(readyResponse.body.data.checks.persistence_mode).toBe('sqlite');
 
     const eslCode = `ESL-${Date.now()}`;
 
     const bindResponse = await ctx.request.post('/api/esl/bind').send({
       esl_code: eslCode,
-      product_code: 'SKU-POSTGRES-001',
+      product_code: 'SKU-SQLITE-001',
       template_id: 55
     });
 
@@ -89,6 +78,6 @@ describe.skipIf(!hasDatabase)('PostgreSQL persistence', () => {
 
     const binding = await ctx.runtime.repositories.bindingRepo.getBindingByEslCode(eslCode);
     expect(binding).toBeTruthy();
-    expect(binding.product_code).toBe('SKU-POSTGRES-001');
+    expect(binding.product_code).toBe('SKU-SQLITE-001');
   });
 });

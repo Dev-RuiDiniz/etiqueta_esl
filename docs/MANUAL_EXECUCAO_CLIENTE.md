@@ -2,7 +2,7 @@
 
 ## 1. Objetivo
 
-Este manual orienta instalação, configuração, inicialização e operação diária do sistema ESL.
+Este manual orienta instalação, configuração, inicialização e operação diária do sistema ESL em modo local, com banco SQLite e backup local no PC do cliente.
 
 Perfil recomendado:
 
@@ -12,11 +12,10 @@ Perfil recomendado:
 
 ## 2. Pré-requisitos
 
-- Node.js 20+.
-- npm.
-- Acesso ao repositório.
-- Para modo real: credenciais vendor (`ESL_HOST`, `ESL_CLIENT_ID`, `ESL_SIGN`, `ESL_STORE_CODE`).
-- Para PostgreSQL: instância de banco disponível e `DATABASE_URL` válido.
+- Node.js 20+
+- npm
+- Acesso ao repositório
+- Credenciais vendor (`ESL_HOST`, `ESL_CLIENT_ID`, `ESL_SIGN`, `ESL_STORE_CODE`) para modo real
 
 ## 3. Instalação
 
@@ -48,14 +47,19 @@ VITE_FORCE_API_ERROR=false
 VITE_ENABLE_MOCK_FAILURE=false
 ```
 
-### 4.2 Modo real com BFF (memória)
+### 4.2 Modo real com BFF + SQLite local (padrão)
 
 ```env
 VITE_API_MODE=real
 VITE_BFF_TARGET=http://127.0.0.1:8787
 
 BFF_PORT=8787
-BFF_PERSISTENCE_MODE=memory
+BFF_PERSISTENCE_MODE=sqlite
+BFF_DATA_DIR=
+BFF_BACKUP_ENABLED=true
+BFF_BACKUP_INTERVAL_MS=86400000
+BFF_BACKUP_RETENTION_COUNT=7
+
 BFF_AUTH_ENABLED=false
 LOG_LEVEL=info
 METRICS_ENABLED=true
@@ -68,19 +72,10 @@ ESL_IS_BASE64=0
 ESL_ENABLE_JOBS=true
 ```
 
-### 4.3 Modo real com PostgreSQL
-
-Adicionar:
+### 4.3 Modo memória (apenas dev/testes)
 
 ```env
-BFF_PERSISTENCE_MODE=postgres
-DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/etiqueta_esl
-```
-
-Aplicar migração:
-
-```bash
-npm run bff:migrate
+BFF_PERSISTENCE_MODE=memory
 ```
 
 ### 4.4 Ativando autenticação JWT (opcional)
@@ -97,7 +92,7 @@ BFF_DEFAULT_ADMIN_PASSWORD=TroqueEstaSenha!
 
 Importante:
 
-- Com auth ativa, rotas `/api/esl/*` passam a exigir token bearer.
+- Com auth ativa, rotas `/api/esl/*` exigem token bearer.
 
 ## 5. Inicialização dos serviços
 
@@ -125,35 +120,37 @@ curl http://127.0.0.1:8787/metrics
 
 Validação UI:
 
-- Abrir URL do Vite (normalmente `http://127.0.0.1:5173`).
-- Conferir carregamento das telas principais.
+- Abrir URL do Vite (normalmente `http://127.0.0.1:5173`)
+- Conferir carregamento das telas principais
 
-## 7. Guia de uso por tela
+## 7. Operação de backup e restore local
 
-### Dashboard
+### 7.1 Backup automático
 
-- Acompanhar visão geral de operação.
-- Verificar sinais de degradação.
+- O backup local roda automaticamente quando `BFF_BACKUP_ENABLED=true`.
+- Intervalo padrão: 24h (`BFF_BACKUP_INTERVAL_MS=86400000`).
+- Retenção padrão: 7 arquivos (`BFF_BACKUP_RETENTION_COUNT=7`).
+- Arquivos ficam em `backups/` dentro de `BFF_DATA_DIR` (ou diretório padrão do usuário).
 
-### Etiquetas
+### 7.2 Restore manual assistido
 
-- Buscar por etiqueta, SKU e produto.
-- Filtrar por status.
-- Abrir detalhe para diagnóstico.
+Com BFF parado, executar:
 
-### Atualizações
+```bash
+npm run bff:restore -- <caminho-do-backup.sqlite>
+```
 
-- Individual: atualização de preço pontual.
-- Lote: processamento de múltiplas atualizações via arquivo.
+Para execução sem prompt interativo:
 
-### Alertas
+```bash
+npm run bff:restore -- <caminho-do-backup.sqlite> --yes
+```
 
-- Acompanhar incidentes.
-- Priorizar e marcar resolução.
+Comportamento:
 
-### Histórico
-
-- Rastrear eventos por período, SKU, etiqueta e status.
+- Valida integridade do backup informado.
+- Cria snapshot de segurança pré-restore (`pre-restore-*.sqlite`).
+- Substitui o banco ativo e valida integridade final.
 
 ## 8. Procedimentos operacionais principais
 
@@ -185,71 +182,30 @@ Validação UI:
 2. Disparar ação de LED.
 3. Confirmar identificação em loja.
 
-### 8.5 Recuperação básica
-
-1. Validar `/readyz`.
-2. Conferir dead-letter no endpoint `/api/esl/dead-letters`.
-3. Executar ciclo manual de jobs em `/api/esl/jobs/run` (perfil admin).
-4. Validar reconciliação de vínculo.
-
-## 9. Uso de autenticação via API (quando habilitado)
-
-Login:
-
-```bash
-curl -X POST http://127.0.0.1:8787/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@etiqueta.local","password":"TroqueEstaSenha!"}'
-```
-
-Usar token:
-
-```bash
-curl http://127.0.0.1:8787/api/esl/health \
-  -H "Authorization: Bearer <access_token>"
-```
-
-Refresh:
-
-```bash
-curl -X POST http://127.0.0.1:8787/api/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{"refresh_token":"<refresh_token>"}'
-```
-
-## 10. Erros comuns e solução
+## 9. Erros comuns e solução
 
 - `readyz = 503`:
   - revisar variáveis `ESL_*`
-  - revisar `DATABASE_URL` no modo postgres
+  - revisar modo de persistência e caminho `BFF_DATA_DIR`
   - revisar segredos JWT se auth estiver ativa
 - `401 Unauthorized`:
   - token ausente/expirado/inválido
 - `403 Forbidden`:
   - perfil sem permissão para a rota
-- Falhas recorrentes de atualização:
-  - verificar conectividade AP/Base Station
-  - verificar disponibilidade da API vendor
-  - analisar dead-letter e auditoria
+- Falha de restore:
+  - validar arquivo `.sqlite`
+  - garantir que o BFF esteja parado durante a restauração
 
-## 11. Checklist diário de operação
+## 10. Checklist diário de operação
 
 1. Subir BFF e frontend.
 2. Validar `/healthz` e `/readyz`.
 3. Verificar alertas e etiquetas offline.
 4. Executar atualizações programadas.
 5. Revisar falhas em dead-letter.
-6. Confirmar histórico de operações críticas.
+6. Confirmar existência de backups recentes locais.
 
-## 12. Checklist para demonstração
-
-1. Definir cenário (`mock` ou `real`).
-2. Validar dados de demonstração e filtros.
-3. Demonstrar atualização individual e lote.
-4. Demonstrar consulta de status e LED search.
-5. Mostrar auditoria e endpoint de saúde.
-
-## 13. Referências
+## 11. Referências
 
 - `README.md`
 - `docs/SISTEMA_E_INTEGRACAO_ESL.md`

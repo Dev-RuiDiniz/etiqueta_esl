@@ -7,6 +7,16 @@ function asBoolean(value, defaultValue = false) {
   return normalized === 'true' || normalized === '1' || normalized === 'yes';
 }
 
+function asPositiveInt(value, fallback) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.floor(parsed);
+}
+
 export function loadConfig() {
   // Centraliza variáveis da integração ESL/BFF.
   // Todos os módulos dependem deste objeto para evitar configuração espalhada.
@@ -29,8 +39,11 @@ export function loadConfig() {
     maxRetryAttempts: Number(process.env.ESL_MAX_RETRY_ATTEMPTS ?? 3),
     retryBaseDelayMs: Number(process.env.ESL_RETRY_BASE_DELAY_MS ?? 400),
 
-    persistenceMode: (process.env.BFF_PERSISTENCE_MODE ?? 'memory').trim().toLowerCase(),
-    databaseUrl: (process.env.DATABASE_URL ?? '').trim(),
+    persistenceMode: (process.env.BFF_PERSISTENCE_MODE ?? 'sqlite').trim().toLowerCase(),
+    dataDir: (process.env.BFF_DATA_DIR ?? '').trim(),
+    backupEnabled: asBoolean(process.env.BFF_BACKUP_ENABLED, true),
+    backupIntervalMs: asPositiveInt(process.env.BFF_BACKUP_INTERVAL_MS, 24 * 60 * 60 * 1000),
+    backupRetentionCount: asPositiveInt(process.env.BFF_BACKUP_RETENTION_COUNT, 7),
 
     authEnabled: asBoolean(process.env.BFF_AUTH_ENABLED, false),
     jwtAccessSecret: (process.env.JWT_ACCESS_SECRET ?? '').trim(),
@@ -98,9 +111,27 @@ export function assertAuthConfig(config) {
 }
 
 export function assertPersistenceConfig(config) {
-  if (config.persistenceMode === 'postgres' && !config.databaseUrl) {
-    const error = new Error('Missing DATABASE_URL for postgres persistence mode.');
-    error.code = 'PERSISTENCE_CONFIG_MISSING';
+  if (config.persistenceMode !== 'sqlite' && config.persistenceMode !== 'memory') {
+    const error = new Error(`Unsupported persistence mode: ${config.persistenceMode}`);
+    error.code = 'PERSISTENCE_MODE_UNSUPPORTED';
+    throw error;
+  }
+
+  if (config.backupIntervalMs <= 0) {
+    const error = new Error('BFF_BACKUP_INTERVAL_MS must be greater than zero.');
+    error.code = 'BACKUP_CONFIG_INVALID';
+    throw error;
+  }
+
+  if (config.backupRetentionCount <= 0) {
+    const error = new Error('BFF_BACKUP_RETENTION_COUNT must be greater than zero.');
+    error.code = 'BACKUP_CONFIG_INVALID';
+    throw error;
+  }
+
+  if (config.persistenceMode === 'memory' && (process.env.NODE_ENV ?? '').trim().toLowerCase() === 'production') {
+    const error = new Error('Memory persistence mode is restricted to development and tests.');
+    error.code = 'PERSISTENCE_MODE_RESTRICTED';
     throw error;
   }
 }

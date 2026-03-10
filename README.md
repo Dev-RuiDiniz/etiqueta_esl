@@ -10,7 +10,7 @@ Sistema para operação de etiquetas eletrônicas de prateleira (ESL), com front
 - Trigger de refresh em fila consolidada.
 - Busca física de etiqueta por LED.
 - Auditoria operacional e dead-letter para falhas.
-- Jobs de sincronização, reconciliação e retenção.
+- Jobs de sincronização, reconciliação, retenção e backup local.
 
 ## 2. Arquitetura resumida
 
@@ -39,20 +39,12 @@ F --> E --> D --> C --> B --> A
 - Rotas de negócio: `server/esl/routes.js`.
 - Serviços ESL: `server/esl/*`.
 - Auth JWT/RBAC: `server/auth/*`.
-- Persistência por repositório: `server/db/repositories/*` (`memory` e `postgres`).
-- Migrações: `server/db/postgres/migrations/*`.
+- Persistência por repositório: `server/db/repositories/*` (`memory` e `sqlite`).
+- Infra de banco local: `server/db/sqlite/*`.
 - Jobs: `server/jobs/*`.
 - Observabilidade: `server/observability/*`.
 
-## 4. Funcionalidades por tela
-
-- `Dashboard`: visão consolidada de operação.
-- `Etiquetas`: busca, filtros e status por etiqueta.
-- `Atualizações`: fluxo individual e em lote.
-- `Alertas`: acompanhamento de incidentes.
-- `Histórico`: trilha de eventos operacionais.
-
-## 5. Endpoints do BFF
+## 4. Endpoints do BFF
 
 ### Operação ESL (`/api/esl/*`)
 
@@ -87,6 +79,45 @@ F --> E --> D --> C --> B --> A
 | GET | `/readyz` | Readiness (config + DB + auth) |
 | GET | `/metrics` | Métricas Prometheus |
 
+## 5. Persistência local e backup
+
+Modo configurável por `BFF_PERSISTENCE_MODE`:
+
+- `sqlite` (padrão): persistência em arquivo local no PC do cliente.
+- `memory`: desenvolvimento/testes sem persistência em disco.
+
+Entidades persistidas no SQLite:
+
+- `esl_bindings`
+- `esl_status_snapshots`
+- `esl_command_log`
+- `dead_letters`
+- `users`
+- `refresh_tokens`
+
+Estrutura local (por padrão no perfil do usuário):
+
+- `data/etiqueta_esl.sqlite` (banco ativo)
+- `backups/*.sqlite` (cópias locais)
+
+Backup automático local:
+
+- Job dedicado com `BFF_BACKUP_ENABLED=true`.
+- Intervalo padrão diário (`BFF_BACKUP_INTERVAL_MS=86400000`).
+- Retenção padrão de 7 arquivos (`BFF_BACKUP_RETENTION_COUNT=7`).
+
+Restore manual assistido:
+
+```bash
+npm run bff:restore -- <caminho-do-backup.sqlite>
+```
+
+Com `--yes`, pula confirmação interativa:
+
+```bash
+npm run bff:restore -- <caminho-do-backup.sqlite> --yes
+```
+
 ## 6. Segurança (JWT + RBAC)
 
 Quando `BFF_AUTH_ENABLED=true`, rotas `/api/esl/*` exigem bearer token.
@@ -102,47 +133,12 @@ Importante:
 - Usuário admin padrão é criado no startup (`BFF_DEFAULT_ADMIN_EMAIL` e `BFF_DEFAULT_ADMIN_PASSWORD`).
 - Em produção, altere segredos JWT e senha padrão antes do go-live.
 
-## 7. Persistência
-
-Modo configurável por `BFF_PERSISTENCE_MODE`:
-
-- `memory`: desenvolvimento rápido.
-- `postgres`: persistência relacional.
-
-Tabelas principais (PostgreSQL):
-
-- `esl_bindings`
-- `esl_status_snapshots`
-- `esl_command_log`
-- `dead_letters`
-- `users`
-- `refresh_tokens`
-
-Migrações:
-
-- `npm run bff:migrate`
-- `npm run bff:migrate:down`
-
-## 8. Observabilidade
-
-- Logs estruturados JSON com `pino`.
-- Métricas Prometheus com `prom-client`:
-  - latência e volume HTTP do BFF
-  - latência/erros de chamadas vendor
-  - execuções de jobs
-  - tamanho de fila de refresh e dead-letter
-- Health checks:
-  - `/healthz`
-  - `/readyz`
-  - `/metrics`
-
-## 9. Quickstart
+## 7. Quickstart
 
 ### Pré-requisitos
 
 - Node.js 20+
 - npm
-- PostgreSQL (opcional, quando usar `postgres`)
 
 ### Instalação
 
@@ -166,7 +162,7 @@ Execução:
 npm run dev
 ```
 
-### Modo real com BFF + memória
+### Modo real com BFF + SQLite local
 
 `.env` mínimo:
 
@@ -175,7 +171,11 @@ VITE_API_MODE=real
 VITE_BFF_TARGET=http://127.0.0.1:8787
 
 BFF_PORT=8787
-BFF_PERSISTENCE_MODE=memory
+BFF_PERSISTENCE_MODE=sqlite
+BFF_DATA_DIR=
+BFF_BACKUP_ENABLED=true
+BFF_BACKUP_INTERVAL_MS=86400000
+BFF_BACKUP_RETENTION_COUNT=7
 BFF_AUTH_ENABLED=false
 
 ESL_HOST=https://esl.greendisplay.cn
@@ -192,24 +192,15 @@ npm run bff
 npm run dev
 ```
 
-### Modo real com PostgreSQL
+### Modo memória (apenas dev/testes)
 
-`.env` adicional:
+`.env`:
 
 ```env
-BFF_PERSISTENCE_MODE=postgres
-DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/etiqueta_esl
+BFF_PERSISTENCE_MODE=memory
 ```
 
-Aplicar migrações e iniciar:
-
-```bash
-npm run bff:migrate
-npm run bff
-npm run dev
-```
-
-## 10. Variáveis de ambiente
+## 8. Variáveis de ambiente
 
 | Variável | Finalidade | Exemplo |
 |---|---|---|
@@ -219,15 +210,18 @@ npm run dev
 | `VITE_ENABLE_MOCK_FAILURE` | Falhas aleatórias no mock | `false` |
 | `BFF_PORT` | Porta HTTP do BFF | `8787` |
 | `LOG_LEVEL` | Nível de log do BFF | `info` |
-| `ESL_ENABLE_JOBS` | Habilita jobs periódicos | `true` |
+| `ESL_ENABLE_JOBS` | Habilita jobs periódicos ESL | `true` |
 | `ESL_RETENTION_INTERVAL_MS` | Intervalo do job de retenção | `43200000` |
 | `ESL_HOST` | Host da API vendor | `https://esl.greendisplay.cn` |
 | `ESL_CLIENT_ID` | `i_client_id` da API | `default` |
 | `ESL_SIGN` | Assinatura exigida pelo vendor | `***` |
 | `ESL_STORE_CODE` | Código da loja | `001` |
 | `ESL_IS_BASE64` | Flag vendor | `0` |
-| `BFF_PERSISTENCE_MODE` | `memory` ou `postgres` | `postgres` |
-| `DATABASE_URL` | Conexão PostgreSQL | `postgres://...` |
+| `BFF_PERSISTENCE_MODE` | `sqlite` ou `memory` | `sqlite` |
+| `BFF_DATA_DIR` | Diretório base local para banco/backup | `C:\\Users\\...\\AppData\\Local\\etiqueta_esl` |
+| `BFF_BACKUP_ENABLED` | Liga job de backup local | `true` |
+| `BFF_BACKUP_INTERVAL_MS` | Intervalo do backup automático | `86400000` |
+| `BFF_BACKUP_RETENTION_COUNT` | Quantidade de backups mantidos | `7` |
 | `BFF_AUTH_ENABLED` | Ativa JWT/RBAC | `true` |
 | `JWT_ACCESS_SECRET` | Segredo access token | `***` |
 | `JWT_REFRESH_SECRET` | Segredo refresh token | `***` |
@@ -239,14 +233,13 @@ npm run dev
 | `ESL_COMMAND_LOG_RETENTION_DAYS` | Retenção de auditoria | `30` |
 | `ESL_DEAD_LETTER_RETENTION_DAYS` | Retenção de dead-letter | `30` |
 
-## 11. Scripts
+## 9. Scripts
 
 | Comando | Uso |
 |---|---|
 | `npm run dev` | Frontend em desenvolvimento |
 | `npm run bff` | Inicia o BFF |
-| `npm run bff:migrate` | Aplica migrações PostgreSQL |
-| `npm run bff:migrate:down` | Rollback da última migração |
+| `npm run bff:restore` | Restaura banco SQLite de um backup local |
 | `npm run test:bff` | Testes Vitest/Supertest do BFF |
 | `npm run lint` | Lint do projeto |
 | `npm run build` | Build de produção |
@@ -254,14 +247,15 @@ npm run dev
 | `npm run format` | Formatação automática |
 | `npm run format:check` | Validação de formatação |
 
-## 12. Testes
+## 10. Testes
 
 Cobertura atual de automação do BFF:
 
 - Contrato de resposta e comportamento base.
 - Login/refresh/logout com JWT.
-- RBAC por rota e perfil.
-- Persistência PostgreSQL (executa quando `DATABASE_URL` estiver disponível).
+- Persistência SQLite (repositórios e runtime).
+- Backup local automático (retenção).
+- Restore CLI (sucesso e falha controlada).
 
 Execução:
 
@@ -269,14 +263,14 @@ Execução:
 npm run test:bff
 ```
 
-## 13. Troubleshooting
+## 11. Troubleshooting
 
-- `readyz` em `503`: verificar `ESL_*`, `DATABASE_URL` (modo postgres), segredos JWT (quando auth ativo).
+- `readyz` em `503`: verificar `ESL_*`, modo de persistência e segredos JWT (quando auth ativo).
 - `401` em `/api/esl/*`: token ausente/inválido com `BFF_AUTH_ENABLED=true`.
 - `403` em `/api/esl/*`: perfil sem permissão para a rota.
-- Falha de refresh/status: revisar conectividade AP/Base Station e disponibilidade vendor.
+- Falha de restore: confirmar caminho do arquivo e integridade do backup SQLite.
 
-## 14. Documentação complementar
+## 12. Documentação complementar
 
 - Documento técnico detalhado: `docs/SISTEMA_E_INTEGRACAO_ESL.md`
 - Manual operacional do cliente: `docs/MANUAL_EXECUCAO_CLIENTE.md`

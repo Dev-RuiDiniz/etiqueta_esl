@@ -1,9 +1,19 @@
+export const REQUIRED_SQLITE_TABLES = [
+  'esl_bindings',
+  'esl_status_snapshots',
+  'esl_command_log',
+  'dead_letters',
+  'users',
+  'refresh_tokens'
+];
+
+export const SQLITE_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS esl_bindings (
   esl_code TEXT PRIMARY KEY,
   product_code TEXT NOT NULL,
   template_id INTEGER NULL,
-  bound_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  bound_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
   binding_status TEXT NOT NULL DEFAULT 'BOUND'
 );
 
@@ -19,24 +29,24 @@ CREATE TABLE IF NOT EXISTS esl_status_snapshots (
   product_code TEXT NULL,
   ap_code TEXT NULL,
   esltype_code TEXT NULL,
-  created_at TIMESTAMPTZ NULL,
-  updated_at TIMESTAMPTZ NULL,
-  seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TEXT NULL,
+  updated_at TEXT NULL,
+  seen_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_esl_status_snapshots_updated_at ON esl_status_snapshots (updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS esl_command_log (
   id TEXT PRIMARY KEY,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TEXT NOT NULL,
   operation TEXT NOT NULL,
   request_id TEXT NULL,
-  success BOOLEAN NOT NULL,
+  success INTEGER NOT NULL,
   error_code INTEGER NULL,
   error_msg TEXT NULL,
-  payload JSONB NULL,
-  response JSONB NULL,
-  meta JSONB NULL
+  payload TEXT NULL,
+  response TEXT NULL,
+  meta TEXT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_esl_command_log_created_at ON esl_command_log (created_at DESC);
@@ -45,15 +55,15 @@ CREATE INDEX IF NOT EXISTS idx_esl_command_log_request_id ON esl_command_log (re
 
 CREATE TABLE IF NOT EXISTS dead_letters (
   id TEXT PRIMARY KEY,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TEXT NOT NULL,
   operation TEXT NOT NULL,
-  payload JSONB NULL,
-  error JSONB NULL,
+  payload TEXT NULL,
+  error TEXT NULL,
   attempts INTEGER NOT NULL DEFAULT 0,
-  meta JSONB NULL,
+  meta TEXT NULL,
   status TEXT NOT NULL DEFAULT 'PENDING',
   last_error TEXT NULL,
-  processed_at TIMESTAMPTZ NULL
+  processed_at TEXT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_dead_letters_created_at ON dead_letters (created_at DESC);
@@ -65,19 +75,21 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   token_hash TEXT NOT NULL UNIQUE,
-  expires_at TIMESTAMPTZ NOT NULL,
-  revoked BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  revoked_at TIMESTAMPTZ NULL
+  expires_at TEXT NOT NULL,
+  revoked INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  revoked_at TEXT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens (user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked_expires_at ON refresh_tokens (revoked, expires_at);
+`;

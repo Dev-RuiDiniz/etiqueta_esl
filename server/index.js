@@ -14,6 +14,7 @@ import { EslRefreshService } from './esl/refreshService.js';
 import { createEslRoutes } from './esl/routes.js';
 import { EslStatusService } from './esl/statusService.js';
 import { EslTemplateService } from './esl/templateService.js';
+import { startBackupJob } from './jobs/backupJob.js';
 import { startDeadLetterJob } from './jobs/deadLetterJob.js';
 import { startProductSyncJob } from './jobs/productSyncJob.js';
 import { startReconciliationJob } from './jobs/reconciliationJob.js';
@@ -188,8 +189,37 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
   const stopJobs = [];
 
   function startJobs() {
+    if (config.backupEnabled) {
+      if (repositories.mode === 'sqlite' && typeof repositories.createBackup === 'function') {
+        stopJobs.push(
+          startBackupJob({
+            repositories,
+            intervalMs: config.backupIntervalMs,
+            retentionCount: config.backupRetentionCount,
+            logger
+          })
+        );
+
+        logger.info(
+          {
+            interval_ms: config.backupIntervalMs,
+            retention_count: config.backupRetentionCount,
+            backup_dir: repositories.storagePaths?.backupDir ?? null
+          },
+          'Local backup job enabled.'
+        );
+      } else {
+        logger.info(
+          { persistence_mode: repositories.mode },
+          'Local backup job skipped: persistence mode does not support local backups.'
+        );
+      }
+    } else {
+      logger.info('Local backup job disabled by configuration.');
+    }
+
     if (!config.jobsEnabled) {
-      logger.info('Background jobs disabled by configuration.');
+      logger.info('Background ESL jobs disabled by configuration.');
       return;
     }
 
@@ -278,7 +308,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
       })
     );
 
-    logger.info('Background jobs are enabled and running.');
+    logger.info('Background ESL jobs are enabled and running.');
   }
 
   async function stopAll() {

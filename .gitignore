@@ -211,5 +211,12 @@ node_modules/
 *.tsbuildinfo
 npm-debug.log*
 
+# Local BFF storage
+data/
+backups/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
 !src/lib/
 !src/lib/**

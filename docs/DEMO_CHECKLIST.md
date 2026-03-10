@@ -7,7 +7,7 @@
 3. Confirmar saúde do backend:
    - `GET /healthz`
    - `GET /readyz`
-4. Se demo em `postgres`, aplicar migração antes: `npm run bff:migrate`.
+4. Se demo em `sqlite`, validar presença de backup local recente em `backups/`.
 5. Se auth estiver ativa, obter token por `POST /api/auth/login`.
 
 ## 2. Roteiro de apresentação
