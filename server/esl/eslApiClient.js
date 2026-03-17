@@ -83,7 +83,11 @@ export class EslApiClient {
     const requestId = buildRequestId();
     const startedAt = Date.now();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.config.requestTimeoutMs);
+    const requestTimeoutMs =
+      Number.isFinite(Number(options.requestTimeoutMs)) && Number(options.requestTimeoutMs) > 0
+        ? Number(options.requestTimeoutMs)
+        : this.config.requestTimeoutMs;
+    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
 
     // A API do fornecedor exige o formato /api/{i_client_id}/...
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;

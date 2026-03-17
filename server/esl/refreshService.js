@@ -1,4 +1,4 @@
-import { runWithRetry } from './eslRetryPolicy.js';
+import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorDirectPayload } from './eslMapper.js';
 
 export class EslRefreshService {
@@ -54,6 +54,18 @@ export class EslRefreshService {
       queued_count: this.queuedEslCodes.size
     });
 
+    if (!result.success) {
+      await recordLogicalVendorFailure(
+        result,
+        {
+          operation: 'esl.bind_task',
+          payload,
+          meta: { queued_count: this.queuedEslCodes.size }
+        },
+        this.deadLetterRepo
+      );
+    }
+
     if (result.success) {
       this.queuedEslCodes.clear();
     }
@@ -104,6 +116,18 @@ export class EslRefreshService {
       error_msg: result.error_msg,
       response: result.data
     });
+
+    if (!result.success) {
+      await recordLogicalVendorFailure(
+        result,
+        {
+          operation: 'esl.direct',
+          payload,
+          meta: { count: items.length }
+        },
+        this.deadLetterRepo
+      );
+    }
 
     return result;
   }

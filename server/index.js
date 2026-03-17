@@ -142,10 +142,49 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
 
   const authRoute = createAuthRoutes({ authService });
 
+  async function probeVendorHealth() {
+    if (getMissingEslConfig(config).length > 0) {
+      return {
+        success: false,
+        error_code: 'ESL_CONFIG_MISSING',
+        error_msg: 'Missing ESL configuration'
+      };
+    }
+
+    try {
+      const result = await apiClient.get('/esl/query_count', {}, { requestTimeoutMs: Math.min(config.requestTimeoutMs, 3000) });
+
+      if (!result.success) {
+        return {
+          success: false,
+          error_code: result.error_code ?? 'ESL_VENDOR_UNREADY',
+          error_msg: result.error_msg || 'Vendor readiness probe failed'
+        };
+      }
+
+      return {
+        success: true,
+        error_code: 0,
+        error_msg: ''
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error_code: error?.code ?? 'ESL_VENDOR_UNREACHABLE',
+        error_msg: error?.message ?? 'Vendor readiness probe failed'
+      };
+    }
+  }
+
   async function sendReadyStatus(res, requestId = null) {
     const missingEslConfig = getMissingEslConfig(config);
     let dbReady = false;
     let dbReadyError = null;
+    let vendorProbe = {
+      success: false,
+      error_code: 'ESL_CONFIG_MISSING',
+      error_msg: 'Missing ESL configuration'
+    };
 
     try {
       dbReady = await repositories.ready();
@@ -169,8 +208,14 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     }
 
     checks.auth_config_ready = authConfigReady;
+    checks.vendor_api_ready = false;
 
-    const ready = checks.esl_config_ready && checks.db_ready && checks.auth_config_ready;
+    if (checks.esl_config_ready) {
+      vendorProbe = await probeVendorHealth();
+      checks.vendor_api_ready = vendorProbe.success;
+    }
+
+    const ready = checks.esl_config_ready && checks.db_ready && checks.auth_config_ready && checks.vendor_api_ready;
 
     sendJson(res, ready ? 200 : 503, {
       success: ready,
@@ -181,7 +226,8 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
       data: {
         checks,
         missing_esl_config: missingEslConfig,
-        db_error: dbReadyError
+        db_error: dbReadyError,
+        vendor_probe: vendorProbe
       }
     });
   }

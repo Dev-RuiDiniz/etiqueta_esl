@@ -1,4 +1,4 @@
-import { runWithRetry } from './eslRetryPolicy.js';
+import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorProduct, toVendorProductsArray } from './eslMapper.js';
 
 function chunkArray(input, size) {
@@ -108,6 +108,18 @@ export class EslProductSyncService {
       response: result.data
     });
 
+    if (!result.success) {
+      await recordLogicalVendorFailure(
+        result,
+        {
+          operation: 'product.create',
+          payload: vendorProduct,
+          meta: { product_code: vendorProduct.pc }
+        },
+        this.deadLetterRepo
+      );
+    }
+
     if (result.success && vendorProduct.pc) {
       // Em sucesso, atualiza cache de produtos e agenda refresh das etiquetas vinculadas.
       this.productsByCode.set(vendorProduct.pc, {
@@ -148,6 +160,18 @@ export class EslProductSyncService {
       error_msg: result.error_msg,
       response: result.data
     });
+
+    if (!result.success) {
+      await recordLogicalVendorFailure(
+        result,
+        {
+          operation: 'product.create_multiple',
+          payload: vendorProducts,
+          meta: { count: vendorProducts.length }
+        },
+        this.deadLetterRepo
+      );
+    }
 
     if (result.success) {
       // Atualiza todos os produtos do lote e agenda refresh por produto impactado.

@@ -4,6 +4,14 @@ function sleep(ms) {
   });
 }
 
+async function addDeadLetter(deadLetterRepo, entry) {
+  if (!deadLetterRepo || typeof deadLetterRepo.addDeadLetter !== 'function') {
+    return null;
+  }
+
+  return deadLetterRepo.addDeadLetter(entry);
+}
+
 function defaultRetryable(error) {
   if (!error) {
     return false;
@@ -49,8 +57,8 @@ export async function runWithRetry(task, context, config, options = {}) {
     }
   }
 
-  if (deadLetterRepo && typeof deadLetterRepo.addDeadLetter === 'function') {
-    await deadLetterRepo.addDeadLetter({
+  if (lastError) {
+    await addDeadLetter(deadLetterRepo, {
       operation: context.operation,
       payload: context.payload,
       error: {
@@ -65,4 +73,28 @@ export async function runWithRetry(task, context, config, options = {}) {
   }
 
   throw lastError;
+}
+
+export async function recordLogicalVendorFailure(result, context, deadLetterRepo) {
+  if (!result || result.success !== false) {
+    return null;
+  }
+
+  return addDeadLetter(deadLetterRepo, {
+    operation: context.operation,
+    payload: context.payload,
+    error: {
+      message: result.error_msg ?? 'Vendor logical failure',
+      code: 'ESL_VENDOR_LOGICAL_ERROR',
+      statusCode: result.status_code ?? 200,
+      vendor_error_code: result.error_code ?? null
+    },
+    attempts: 1,
+    meta: {
+      ...(context.meta ?? {}),
+      request_id: result.request_id ?? null,
+      vendor_error_code: result.error_code ?? null
+    },
+    status: 'PENDING'
+  });
 }

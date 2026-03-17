@@ -114,4 +114,48 @@ describe('BFF contract', () => {
     expect(auditResponse.body.data.length).toBeGreaterThan(0);
     expect(fetchMock).toHaveBeenCalled();
   });
+
+  it('retorna 503 em /readyz quando o vendor responde falha lógica', async () => {
+    const fetchMock = vi.fn(async () => {
+      return {
+        status: 200,
+        text: async () => JSON.stringify({ error_code: 1, error_msg: 'app_key is disable' })
+      };
+    });
+
+    const ctx = await createTestContext({ fetchMock });
+    const response = await ctx.request.get('/readyz');
+
+    expect(response.status).toBe(503);
+    expect(response.body.success).toBe(false);
+    expect(response.body.data.checks.vendor_api_ready).toBe(false);
+    expect(response.body.data.vendor_probe.error_msg).toBe('app_key is disable');
+  });
+
+  it('grava dead-letter quando o vendor retorna erro lógico em operação de bind', async () => {
+    const fetchMock = vi.fn(async () => {
+      return {
+        status: 200,
+        text: async () => JSON.stringify({ error_code: 1, error_msg: 'app_key is disable' })
+      };
+    });
+
+    const ctx = await createTestContext({ fetchMock });
+
+    const bindResponse = await ctx.request.post('/api/esl/bind').send({
+      esl_code: '54200001',
+      product_code: 'SKU-001',
+      template_id: 10
+    });
+
+    expect(bindResponse.status).toBe(200);
+    expect(bindResponse.body.success).toBe(false);
+    expect(bindResponse.body.error_msg).toBe('app_key is disable');
+
+    const deadLetterResponse = await ctx.request.get('/api/esl/dead-letters?limit=10');
+    expect(deadLetterResponse.status).toBe(200);
+    expect(deadLetterResponse.body.data.length).toBeGreaterThan(0);
+    expect(deadLetterResponse.body.data[0].operation).toBe('esl.bind');
+    expect(deadLetterResponse.body.data[0].error.code).toBe('ESL_VENDOR_LOGICAL_ERROR');
+  });
 });

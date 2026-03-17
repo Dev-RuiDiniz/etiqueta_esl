@@ -1,4 +1,4 @@
-import { runWithRetry } from './eslRetryPolicy.js';
+import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorBindMultiplePayload, toVendorBindPayload } from './eslMapper.js';
 
 export class EslBindingService {
@@ -34,6 +34,18 @@ export class EslBindingService {
       error_msg: result.error_msg,
       response: result.data
     });
+
+    if (!result.success) {
+      await recordLogicalVendorFailure(
+        result,
+        {
+          operation: 'esl.bind',
+          payload,
+          meta: { esl_code: payload.f1, product_code: payload.f2 }
+        },
+        this.deadLetterRepo
+      );
+    }
 
     if (result.success) {
       // Persistimos vínculo localmente para reconciliação e monitoramento.
@@ -72,6 +84,18 @@ export class EslBindingService {
       response: result.data
     });
 
+    if (!result.success) {
+      await recordLogicalVendorFailure(
+        result,
+        {
+          operation: 'esl.bind_multiple',
+          payload,
+          meta: { count: bindings.length }
+        },
+        this.deadLetterRepo
+      );
+    }
+
     if (result.success) {
       for (const binding of bindings) {
         await this.bindingRepo.upsertBinding(binding);
@@ -108,6 +132,18 @@ export class EslBindingService {
       error_msg: result.error_msg,
       response: result.data
     });
+
+    if (!result.success) {
+      await recordLogicalVendorFailure(
+        result,
+        {
+          operation: 'esl.unbind',
+          payload,
+          meta: { esl_code: eslCode }
+        },
+        this.deadLetterRepo
+      );
+    }
 
     if (result.success) {
       // Remove vínculo local e agenda atualização para refletir no display.

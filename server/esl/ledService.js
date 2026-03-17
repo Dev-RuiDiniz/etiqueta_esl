@@ -1,4 +1,4 @@
-import { runWithRetry } from './eslRetryPolicy.js';
+import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorSearchPayload } from './eslMapper.js';
 
 export class EslLedService {
@@ -32,6 +32,18 @@ export class EslLedService {
       error_msg: result.error_msg,
       response: result.data
     });
+
+    if (!result.success) {
+      await recordLogicalVendorFailure(
+        result,
+        {
+          operation: 'esl.search',
+          payload,
+          meta: { count: eslCodes.length }
+        },
+        this.deadLetterRepo
+      );
+    }
 
     return result;
   }
