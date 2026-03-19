@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Frontend (Vite)",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["C:\\Users\\RUI FRANCISCO\\Documents\\GitHub\\etiqueta_esl\\node_modules\\vite\\bin\\vite.js"],
+      "port": 5173
+    },
+    {
+      "name": "BFF (Node.js)",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["server/index.js"],
+      "port": 8787,
+      "autoPort": false
+    }
+  ]
+}
