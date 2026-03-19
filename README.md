@@ -5,12 +5,15 @@ Sistema para operação de etiquetas eletrônicas de prateleira (ESL), com front
 ## 1. O que o sistema faz
 
 - Monitoramento de etiquetas (`online/offline`, bateria, AP, vínculo de produto).
-- Atualização de preço individual e em lote.
+- Atualização de preço individual e em lote (CSV com BOM detection, limite 2 MB / 5000 linhas).
 - Bind/unbind de etiquetas com produtos e templates.
-- Trigger de refresh em fila consolidada.
+- Trigger de refresh em fila consolidada (race-condition safe).
 - Busca física de etiqueta por LED.
 - Auditoria operacional e dead-letter para falhas.
 - Jobs de sincronização, reconciliação, retenção e backup local.
+- Dashboard de KPIs em tempo real (online, offline, bateria baixa, offline por corredor).
+- Catálogo de produtos com persistência SQLite e upload CSV.
+- Alertas derivados de snapshots e dead-letter (OFFLINE, LOW_BATTERY, UPDATE_FAILED).
 
 ## 2. Arquitetura resumida
 
@@ -32,6 +35,8 @@ F --> E --> D --> C --> B --> A
 - Camada ESL em `src/services/esl/*`.
 - Tipos de contrato em `src/types/esl.ts`.
 - Polling operacional em `src/hooks/useEslStatus.ts`.
+- Token store em `src/lib/auth.ts` (localStorage); auto-refresh JWT em `src/services/esl/apiClient.ts`.
+- Upload CSV em `src/components/BulkUpdateUploader.tsx`; parse/validação em `src/utils/csv.ts`.
 
 ### BFF
 
@@ -53,18 +58,24 @@ F --> E --> D --> C --> B --> A
 | GET | `/api/esl/health` | Saúde da integração ESL |
 | GET | `/api/esl/templates` | Consulta templates |
 | GET | `/api/esl/status/summary` | Resumo de status |
+| GET | `/api/esl/status/dashboard` | Dashboard agregado (KPIs, offlineByCorridor) |
 | GET | `/api/esl/status` | Consulta paginada |
 | POST | `/api/esl/status/sync` | Forçar sync |
 | POST | `/api/esl/status/query` | Consulta por lista |
+| GET | `/api/esl/products` | Listagem de produtos paginada (`?page=&size=`) |
 | POST | `/api/esl/products/upsert` | Upsert unitário |
 | POST | `/api/esl/products/upsert-bulk` | Upsert em lote |
+| GET | `/api/esl/bindings` | Bindings (`?product_code=` opcional) |
 | POST | `/api/esl/bind` | Bind unitário |
 | POST | `/api/esl/bind/bulk` | Bind em lote |
 | POST | `/api/esl/unbind` | Unbind |
 | POST | `/api/esl/refresh/trigger` | Trigger de refresh |
 | POST | `/api/esl/led/search` | LED search |
 | POST | `/api/esl/direct` | Atualização direta |
-| GET | `/api/esl/audit` | Auditoria |
+| GET | `/api/esl/audit` | Auditoria (log completo) |
+| GET | `/api/esl/audit/history` | Histórico formatado (produto + bind) |
+| GET | `/api/esl/alerts` | Alertas derivados (OFFLINE, LOW_BATTERY, UPDATE_FAILED) |
+| POST | `/api/esl/alerts/:id/resolve` | Resolve alerta (marca dead-letter como PROCESSED) |
 | GET | `/api/esl/dead-letters` | Dead-letter |
 | POST | `/api/esl/jobs/run` | Rodar ciclo de jobs manualmente |
 
@@ -76,7 +87,7 @@ F --> E --> D --> C --> B --> A
 | POST | `/api/auth/refresh` | Renova token |
 | POST | `/api/auth/logout` | Revoga refresh token |
 | GET | `/healthz` | Liveness do processo |
-| GET | `/readyz` | Readiness (config + DB + auth) |
+| GET | `/readyz` | Readiness (config + DB + auth + vendor) |
 | GET | `/metrics` | Métricas Prometheus |
 
 ## 5. Persistência local e backup
@@ -94,6 +105,7 @@ Entidades persistidas no SQLite:
 - `dead_letters`
 - `users`
 - `refresh_tokens`
+- `products` _(novo — catálogo de produtos com sync_status)_
 
 Estrutura local (por padrão no perfil do usuário):
 
@@ -127,6 +139,13 @@ Perfis:
 - `admin`: acesso total, incluindo `/api/esl/jobs/run` e `/api/esl/dead-letters`.
 - `operador`: operações de negócio e monitoramento.
 - `viewer`: leitura (`GET`) somente.
+
+Proteções adicionais:
+
+- **Rate limit no login**: 10 tentativas por IP por janela de 15 minutos. Retorna HTTP 429 com header `Retry-After`.
+- **CORS restrito**: quando `ALLOWED_ORIGINS` é definido, apenas origens listadas recebem `Access-Control-Allow-Origin`. Em desenvolvimento (variável vazia), aceita qualquer origem.
+- **Payload limit**: corpo JSON limitado a 1 MB por requisição. Excedente retorna HTTP 413.
+- **Frontend auto-refresh**: `apiClient.ts` repete requisição com novo token em caso de 401; em falha, redireciona para login.
 
 Importante:
 
@@ -178,6 +197,9 @@ BFF_BACKUP_INTERVAL_MS=86400000
 BFF_BACKUP_RETENTION_COUNT=7
 BFF_AUTH_ENABLED=false
 
+# Restrição de origem (separar por vírgula; vazio = aceita qualquer)
+ALLOWED_ORIGINS=http://localhost:5173
+
 ESL_HOST=https://esl.greendisplay.cn
 ESL_CLIENT_ID=seu_client_id
 ESL_SIGN=seu_sign
@@ -223,6 +245,7 @@ BFF_PERSISTENCE_MODE=memory
 | `BFF_BACKUP_INTERVAL_MS` | Intervalo do backup automático | `86400000` |
 | `BFF_BACKUP_RETENTION_COUNT` | Quantidade de backups mantidos | `7` |
 | `BFF_AUTH_ENABLED` | Ativa JWT/RBAC | `true` |
+| `ALLOWED_ORIGINS` | Origens permitidas no CORS (vírgula) | `http://localhost:5173` |
 | `JWT_ACCESS_SECRET` | Segredo access token | `***` |
 | `JWT_REFRESH_SECRET` | Segredo refresh token | `***` |
 | `JWT_ACCESS_TTL` | TTL do access token | `15m` |
@@ -249,13 +272,18 @@ BFF_PERSISTENCE_MODE=memory
 
 ## 10. Testes
 
-Cobertura atual de automação do BFF:
+Cobertura atual de automação do BFF (35 testes / 10 suites):
 
 - Contrato de resposta e comportamento base.
 - Login/refresh/logout com JWT.
 - Persistência SQLite (repositórios e runtime).
 - Backup local automático (retenção).
 - Restore CLI (sucesso e falha controlada).
+- `refreshService`: enqueue, trigger, race-condition, restauração de fila em falha.
+- `productSyncService`: upsert com persistência, flush em lote, falha parcial.
+- `statusService`: queryCount, cache summary, dashboard aggregate, snapshot persistence.
+- Workflow E2E: produto → bind → refresh → dashboard → alertas → histórico.
+- Validação de input: 422 em bind e upsert com dados inválidos.
 
 Execução:
 
@@ -263,14 +291,27 @@ Execução:
 npm run test:bff
 ```
 
-## 11. Troubleshooting
+## 11. Métricas Prometheus
+
+Além das métricas de infraestrutura, o BFF expõe contadores de eventos de negócio em `/metrics`:
+
+| Métrica | Labels | Descrição |
+|---|---|---|
+| `esl_bff_products_synced_total` | `result` (success/failure) | Produtos sincronizados com vendor |
+| `esl_bff_tags_bound_total` | `result` (success/failure) | Bindings realizados |
+| `esl_bff_refreshes_triggered_total` | `result` (success/failure) | Refreshes disparados |
+
+## 12. Troubleshooting
 
 - `readyz` em `503`: verificar `ESL_*`, modo de persistência e segredos JWT (quando auth ativo).
 - `401` em `/api/esl/*`: token ausente/inválido com `BFF_AUTH_ENABLED=true`.
 - `403` em `/api/esl/*`: perfil sem permissão para a rota.
+- `413` em POST: corpo JSON excede 1 MB. Reduza o payload.
+- `422` em bind/upsert: campos obrigatórios ausentes ou inválidos (ver `data.field` na resposta).
+- `429` em `/api/auth/login`: rate limit excedido (10/IP/15 min). Aguardar `Retry-After` segundos.
 - Falha de restore: confirmar caminho do arquivo e integridade do backup SQLite.
 
-## 12. Documentação complementar
+## 13. Documentação complementar
 
 - Documento técnico detalhado: `docs/SISTEMA_E_INTEGRACAO_ESL.md`
 - Manual operacional do cliente: `docs/MANUAL_EXECUCAO_CLIENTE.md`
