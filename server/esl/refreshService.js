@@ -30,6 +30,11 @@ export class EslRefreshService {
   }
 
   async triggerRefresh() {
+    // Snapshot atômico da fila antes do await para evitar race condition:
+    // códigos adicionados durante a chamada async pertencem ao próximo ciclo.
+    const snapshot = new Set(this.queuedEslCodes);
+    this.queuedEslCodes.clear();
+
     const payload = {};
 
     const result = await runWithRetry(
@@ -37,7 +42,7 @@ export class EslRefreshService {
       {
         operation: 'esl.bind_task',
         payload,
-        meta: { queued_count: this.queuedEslCodes.size }
+        meta: { queued_count: snapshot.size }
       },
       this.config,
       { deadLetterRepo: this.deadLetterRepo }
@@ -51,23 +56,24 @@ export class EslRefreshService {
       error_code: result.error_code,
       error_msg: result.error_msg,
       response: result.data,
-      queued_count: this.queuedEslCodes.size
+      queued_count: snapshot.size
     });
 
     if (!result.success) {
+      // Restaurar códigos do snapshot na fila para nova tentativa no próximo ciclo.
+      for (const code of snapshot) {
+        this.queuedEslCodes.add(code);
+      }
+
       await recordLogicalVendorFailure(
         result,
         {
           operation: 'esl.bind_task',
           payload,
-          meta: { queued_count: this.queuedEslCodes.size }
+          meta: { queued_count: snapshot.size }
         },
         this.deadLetterRepo
       );
-    }
-
-    if (result.success) {
-      this.queuedEslCodes.clear();
     }
 
     return {

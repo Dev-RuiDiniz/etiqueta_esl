@@ -35,11 +35,23 @@ export function sendNoContent(res) {
   res.end();
 }
 
-export async function readJsonBody(req) {
+export async function readJsonBody(req, maxBytes = 1024 * 1024) {
   const chunks = [];
+  let totalBytes = 0;
 
   for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buf.byteLength;
+
+    if (totalBytes > maxBytes) {
+      req.socket?.destroy();
+      const error = new Error(`Payload excede o limite de ${Math.round(maxBytes / 1024)} KB.`);
+      error.code = 'PAYLOAD_TOO_LARGE';
+      error.statusCode = 413;
+      throw error;
+    }
+
+    chunks.push(buf);
   }
 
   if (chunks.length === 0) {

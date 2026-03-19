@@ -1,5 +1,6 @@
 import { getMissingEslConfig } from '../config.js';
 import { sendJson } from '../utils/http.js';
+import { requirePositiveInt, requirePositiveNumber, requireString, requireStringArray } from '../utils/validate.js';
 
 function toPositiveInt(raw, fallback) {
   const value = Number(raw);
@@ -162,23 +163,36 @@ export function createEslRoutes({
     }
 
     if (req.method === 'POST' && pathname === '/api/esl/products/upsert') {
+      requireString(body.product_code, 'product_code', { maxLen: 64 });
+      requireString(body.product_name, 'product_name', { maxLen: 256 });
+      requirePositiveNumber(body.price, 'price');
       const result = await productSyncService.upsertProduct(body);
       sendJson(res, 200, buildCommandResult(result));
       return true;
     }
 
     if (req.method === 'POST' && pathname === '/api/esl/products/upsert-bulk') {
-      const items = Array.isArray(body.items) ? body.items : [];
-      const result = await productSyncService.upsertProducts(items);
+      if (!Array.isArray(body.items) || body.items.length === 0) {
+        sendJson(res, 422, { success: false, error_code: 422, error_msg: "O campo 'items' deve ser um array não vazio.", request_id: 'VAL', received_at: new Date().toISOString(), data: { field: 'items' } });
+        return true;
+      }
+      if (body.items.length > 500) {
+        sendJson(res, 422, { success: false, error_code: 422, error_msg: "O campo 'items' pode conter no máximo 500 itens.", request_id: 'VAL', received_at: new Date().toISOString(), data: { field: 'items' } });
+        return true;
+      }
+      const result = await productSyncService.upsertProducts(body.items);
       sendJson(res, 200, buildCommandResult(result));
       return true;
     }
 
     if (req.method === 'POST' && pathname === '/api/esl/bind') {
+      requireString(body.esl_code, 'esl_code', { maxLen: 32 });
+      requireString(body.product_code, 'product_code', { maxLen: 64 });
+      const templateId = requirePositiveInt(body.template_id, 'template_id', { allowNull: true });
       const result = await bindingService.bind({
-        esl_code: body.esl_code,
-        product_code: body.product_code,
-        template_id: body.template_id
+        esl_code: String(body.esl_code).trim(),
+        product_code: String(body.product_code).trim(),
+        template_id: templateId
       });
 
       sendJson(res, 200, buildCommandResult(result));
@@ -186,8 +200,15 @@ export function createEslRoutes({
     }
 
     if (req.method === 'POST' && pathname === '/api/esl/bind/bulk') {
-      const items = Array.isArray(body.items) ? body.items : [];
-      const result = await bindingService.bindMany(items);
+      if (!Array.isArray(body.items) || body.items.length === 0) {
+        sendJson(res, 422, { success: false, error_code: 422, error_msg: "O campo 'items' deve ser um array não vazio.", request_id: 'VAL', received_at: new Date().toISOString(), data: { field: 'items' } });
+        return true;
+      }
+      if (body.items.length > 500) {
+        sendJson(res, 422, { success: false, error_code: 422, error_msg: "O campo 'items' pode conter no máximo 500 itens.", request_id: 'VAL', received_at: new Date().toISOString(), data: { field: 'items' } });
+        return true;
+      }
+      const result = await bindingService.bindMany(body.items);
       sendJson(res, 200, buildCommandResult(result));
       return true;
     }

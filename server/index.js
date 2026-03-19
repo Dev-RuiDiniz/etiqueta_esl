@@ -420,9 +420,10 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
         body = await readJsonBody(req);
       } catch (error) {
         metrics.trackError(categorizeError(error));
-        sendJson(res, 400, {
+        const statusCode = error.code === 'PAYLOAD_TOO_LARGE' ? 413 : 400;
+        sendJson(res, statusCode, {
           success: false,
-          error_code: 400,
+          error_code: statusCode,
           error_msg: error.message,
           request_id: requestId,
           received_at: new Date().toISOString(),
