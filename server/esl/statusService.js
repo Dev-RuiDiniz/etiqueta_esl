@@ -172,6 +172,47 @@ export class EslStatusService {
     return this.statusRepo.getStatusSummary();
   }
 
+  async buildDashboardAggregate() {
+    // Agrega snapshots locais para o dashboard sem chamar o fornecedor.
+    const snapshots = await this.statusRepo.listStatusSnapshots();
+    const now = new Date().toISOString();
+
+    let online = 0;
+    let offline = 0;
+    let lowBattery = 0;
+    const corridorMap = new Map();
+
+    for (const s of snapshots) {
+      const isOnline = s.online === 1 || s.online === true;
+      if (isOnline) {
+        online += 1;
+      } else {
+        offline += 1;
+        const corridor = s.ap_code ?? 'Desconhecido';
+        corridorMap.set(corridor, (corridorMap.get(corridor) ?? 0) + 1);
+      }
+
+      const battery = s.battery_percent != null ? Number(s.battery_percent) : Number(s.esl_battery ?? 100);
+      if (battery < 20) {
+        lowBattery += 1;
+      }
+    }
+
+    const offlineByCorridor = Array.from(corridorMap.entries())
+      .map(([corridor, count]) => ({ corridor, offline: count }))
+      .sort((a, b) => b.offline - a.offline)
+      .slice(0, 10);
+
+    const total = online + offline;
+    const status = total === 0 ? 'Atenção' : offline === 0 ? 'Online' : 'Atenção';
+
+    return {
+      kpis: { totalTags: total, online, offline, lowBattery },
+      offlineByCorridor,
+      lastUpdate: { timestamp: now, status }
+    };
+  }
+
   async pollAndCacheStatus({ pageSize = 100 } = {}) {
     const countResult = await this.queryCount();
 
