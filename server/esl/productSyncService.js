@@ -12,15 +12,15 @@ function chunkArray(input, size) {
 }
 
 export class EslProductSyncService {
-  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, deadLetterRepo }) {
+  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, productRepo, deadLetterRepo, metrics }) {
     this.config = config;
     this.apiClient = apiClient;
     this.refreshService = refreshService;
     this.auditLogService = auditLogService;
     this.bindingRepo = bindingRepo;
+    this.productRepo = productRepo;
     this.deadLetterRepo = deadLetterRepo;
-    // Base interna em memória (v1): simula source of truth + fila de saída.
-    this.productsByCode = new Map();
+    this.metrics = metrics ?? { trackBusinessEvent() {} };
     this.outbox = [];
   }
 
@@ -121,19 +121,18 @@ export class EslProductSyncService {
     }
 
     if (result.success && vendorProduct.pc) {
-      // Em sucesso, atualiza cache de produtos e agenda refresh das etiquetas vinculadas.
-      this.productsByCode.set(vendorProduct.pc, {
+      // Persiste no repositório e agenda refresh das etiquetas vinculadas.
+      await this.productRepo.upsertProduct({
         ...product,
         product_code: vendorProduct.pc,
-        last_synced_at: new Date().toISOString(),
-        sync_status: 'SYNCED',
-        sync_error: null
+        sync_status: 'SYNCED'
       });
 
       const bindings = await this.bindingRepo.listBindingsByProductCode(vendorProduct.pc);
       this.refreshService.enqueueRefresh(bindings.map((item) => item.esl_code));
     }
 
+    this.metrics.trackBusinessEvent('product_synced', result.success ? 'success' : 'failure');
     return result;
   }
 
@@ -174,20 +173,18 @@ export class EslProductSyncService {
     }
 
     if (result.success) {
-      // Atualiza todos os produtos do lote e agenda refresh por produto impactado.
+      // Persiste no repositório e agenda refresh por produto impactado.
       for (const item of vendorProducts) {
         if (!item.pc) {
           continue;
         }
 
-        this.productsByCode.set(item.pc, {
+        await this.productRepo.upsertProduct({
           product_code: item.pc,
           product_name: item.pn,
           price: item.pp,
           quantity: item.qty,
-          last_synced_at: new Date().toISOString(),
-          sync_status: 'SYNCED',
-          sync_error: null
+          sync_status: 'SYNCED'
         });
 
         const bindings = await this.bindingRepo.listBindingsByProductCode(item.pc);
@@ -198,7 +195,11 @@ export class EslProductSyncService {
     return result;
   }
 
-  listProducts() {
-    return Array.from(this.productsByCode.values());
+  async listProducts(limit = 100, offset = 0) {
+    return this.productRepo.listProducts(limit, offset);
+  }
+
+  async countProducts() {
+    return this.productRepo.countProducts();
   }
 }

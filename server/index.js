@@ -55,6 +55,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     apiClient: null,
     auditLogService,
     deadLetterRepo: repositories.deadLetterRepo
+    // metrics é atribuído após createMetrics (abaixo)
   });
 
   const metrics = createMetrics(config, {
@@ -64,6 +65,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
 
   const apiClient = new EslApiClient(config, { metrics, logger });
   refreshService.apiClient = apiClient;
+  refreshService.metrics = metrics;
 
   const productSyncService = new EslProductSyncService({
     config,
@@ -71,7 +73,9 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     refreshService,
     auditLogService,
     bindingRepo: repositories.bindingRepo,
-    deadLetterRepo: repositories.deadLetterRepo
+    productRepo: repositories.productRepo,
+    deadLetterRepo: repositories.deadLetterRepo,
+    metrics
   });
 
   const bindingService = new EslBindingService({
@@ -80,7 +84,8 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     refreshService,
     auditLogService,
     bindingRepo: repositories.bindingRepo,
-    deadLetterRepo: repositories.deadLetterRepo
+    deadLetterRepo: repositories.deadLetterRepo,
+    metrics
   });
 
   const statusService = new EslStatusService({
@@ -137,6 +142,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     ledService,
     auditLogService,
     deadLetterRepo: repositories.deadLetterRepo,
+    bindingRepo: repositories.bindingRepo,
     runJobsOnce
   });
 
@@ -366,7 +372,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
   }
 
   async function handler(req, res) {
-    setCorsHeaders(res);
+    setCorsHeaders(res, req, config.allowedOrigins);
 
     const host = req.headers.host ?? `127.0.0.1:${config.port}`;
     const url = new URL(req.url ?? '/', `http://${host}`);
@@ -418,9 +424,10 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
         body = await readJsonBody(req);
       } catch (error) {
         metrics.trackError(categorizeError(error));
-        sendJson(res, 400, {
+        const statusCode = error.code === 'PAYLOAD_TOO_LARGE' ? 413 : 400;
+        sendJson(res, statusCode, {
           success: false,
-          error_code: 400,
+          error_code: statusCode,
           error_msg: error.message,
           request_id: requestId,
           received_at: new Date().toISOString(),

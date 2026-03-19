@@ -317,6 +317,39 @@ export function createMemoryRepositories() {
     }
   };
 
+  const productsByCode = new Map();
+
+  const productRepo = {
+    async upsertProduct(product) {
+      const record = {
+        product_code: String(product.product_code),
+        product_name: String(product.product_name ?? ''),
+        price: Number(product.price ?? 0),
+        quantity: product.quantity ?? null,
+        unit: product.unit ?? null,
+        vip_price: product.vip_price ?? null,
+        origin_price: product.origin_price ?? null,
+        promotion: product.promotion ?? null,
+        last_synced_at: new Date().toISOString(),
+        sync_status: product.sync_status ?? 'SYNCED'
+      };
+      productsByCode.set(record.product_code, record);
+      return record;
+    },
+
+    async getProduct(productCode) {
+      return productsByCode.get(productCode) ?? null;
+    },
+
+    async listProducts(limit = 100, offset = 0) {
+      return Array.from(productsByCode.values()).slice(offset, offset + limit);
+    },
+
+    async countProducts() {
+      return productsByCode.size;
+    }
+  };
+
   return {
     mode: 'memory',
     bindingRepo,
@@ -325,6 +358,7 @@ export function createMemoryRepositories() {
     deadLetterRepo,
     userRepo,
     refreshTokenRepo,
+    productRepo,
     async ready() {
       return true;
     },

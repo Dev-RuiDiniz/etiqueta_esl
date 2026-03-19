@@ -24,6 +24,7 @@ export function createMetrics(config, { refreshService, deadLetterRepo } = {}) {
       trackVendorRequest() {},
       trackError() {},
       trackJobRun() {},
+      trackBusinessEvent() {},
       async render() {
         return '';
       }
@@ -73,6 +74,28 @@ export function createMetrics(config, { refreshService, deadLetterRepo } = {}) {
     name: 'esl_bff_job_runs_total',
     help: 'Total de execucoes de jobs por resultado',
     labelNames: ['job_name', 'result'],
+    registers: [registry]
+  });
+
+  // Contadores de eventos de negócio para observabilidade de domínio.
+  const productsSynced = new Counter({
+    name: 'esl_bff_products_synced_total',
+    help: 'Total de produtos sincronizados com o fornecedor ESL',
+    labelNames: ['result'],
+    registers: [registry]
+  });
+
+  const tagsBound = new Counter({
+    name: 'esl_bff_tags_bound_total',
+    help: 'Total de etiquetas vinculadas a produtos',
+    labelNames: ['result'],
+    registers: [registry]
+  });
+
+  const refreshesTriggered = new Counter({
+    name: 'esl_bff_refreshes_triggered_total',
+    help: 'Total de ciclos de refresh disparados',
+    labelNames: ['result'],
     registers: [registry]
   });
 
@@ -129,6 +152,12 @@ export function createMetrics(config, { refreshService, deadLetterRepo } = {}) {
     jobRuns.inc({ job_name: jobName, result });
   }
 
+  function trackBusinessEvent(event, result) {
+    if (event === 'product_synced') productsSynced.inc({ result });
+    else if (event === 'tag_bound') tagsBound.inc({ result });
+    else if (event === 'refresh_triggered') refreshesTriggered.inc({ result });
+  }
+
   async function render() {
     return registry.metrics();
   }
@@ -140,6 +169,7 @@ export function createMetrics(config, { refreshService, deadLetterRepo } = {}) {
     trackVendorRequest,
     trackError,
     trackJobRun,
+    trackBusinessEvent,
     render
   };
 }

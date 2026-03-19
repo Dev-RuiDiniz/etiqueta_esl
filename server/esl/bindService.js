@@ -2,13 +2,14 @@ import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorBindMultiplePayload, toVendorBindPayload } from './eslMapper.js';
 
 export class EslBindingService {
-  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, deadLetterRepo }) {
+  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, deadLetterRepo, metrics }) {
     this.config = config;
     this.apiClient = apiClient;
     this.refreshService = refreshService;
     this.auditLogService = auditLogService;
     this.bindingRepo = bindingRepo;
     this.deadLetterRepo = deadLetterRepo;
+    this.metrics = metrics ?? { trackBusinessEvent() {} };
   }
 
   async bind(binding) {
@@ -56,6 +57,8 @@ export class EslBindingService {
       });
       this.refreshService.enqueueRefresh([binding.esl_code]);
     }
+
+    this.metrics.trackBusinessEvent('tag_bound', result.success ? 'success' : 'failure');
 
     return result;
   }

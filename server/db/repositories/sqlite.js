@@ -270,6 +270,25 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   const purgeDeadLetterStmt = db.prepare('DELETE FROM dead_letters WHERE created_at < ?');
   const countDeadLettersStmt = db.prepare('SELECT COUNT(*) AS count FROM dead_letters');
 
+  const upsertProductStmt = db.prepare(`
+    INSERT INTO products (product_code, product_name, price, quantity, unit, vip_price, origin_price, promotion, last_synced_at, sync_status)
+    VALUES (@product_code, @product_name, @price, @quantity, @unit, @vip_price, @origin_price, @promotion, @last_synced_at, @sync_status)
+    ON CONFLICT (product_code)
+    DO UPDATE SET
+      product_name = excluded.product_name,
+      price = excluded.price,
+      quantity = excluded.quantity,
+      unit = excluded.unit,
+      vip_price = excluded.vip_price,
+      origin_price = excluded.origin_price,
+      promotion = excluded.promotion,
+      last_synced_at = excluded.last_synced_at,
+      sync_status = excluded.sync_status;
+  `);
+  const getProductStmt = db.prepare('SELECT * FROM products WHERE product_code = ?');
+  const listProductsStmt = db.prepare('SELECT * FROM products ORDER BY last_synced_at DESC LIMIT ? OFFSET ?');
+  const countProductsStmt = db.prepare('SELECT COUNT(*) AS count FROM products');
+
   const insertUserStmt = db.prepare(
     'INSERT INTO users (id, email, password_hash, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
   );
@@ -564,6 +583,37 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
     }
   };
 
+  const productRepo = {
+    async upsertProduct(product) {
+      upsertProductStmt.run({
+        product_code: String(product.product_code),
+        product_name: String(product.product_name ?? ''),
+        price: Number(product.price ?? 0),
+        quantity: product.quantity != null ? toSafeInteger(product.quantity, 0) : null,
+        unit: product.unit ?? null,
+        vip_price: product.vip_price != null ? Number(product.vip_price) : null,
+        origin_price: product.origin_price != null ? Number(product.origin_price) : null,
+        promotion: product.promotion ?? null,
+        last_synced_at: nowIso(),
+        sync_status: product.sync_status ?? 'SYNCED'
+      });
+      return getProductStmt.get(String(product.product_code)) ?? null;
+    },
+
+    async getProduct(productCode) {
+      return getProductStmt.get(productCode) ?? null;
+    },
+
+    async listProducts(limit = 100, offset = 0) {
+      return listProductsStmt.all(Math.max(1, toSafeInteger(limit, 100)), Math.max(0, toSafeInteger(offset, 0)));
+    },
+
+    async countProducts() {
+      const row = countProductsStmt.get();
+      return toSafeInteger(row?.count, 0);
+    }
+  };
+
   return {
     mode: 'sqlite',
     storagePaths,
@@ -573,6 +623,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
     deadLetterRepo,
     userRepo,
     refreshTokenRepo,
+    productRepo,
     async createBackup({ prefix = 'backup', retentionCount = backupRetentionCount } = {}) {
       return createSqliteBackupSnapshot({
         db,

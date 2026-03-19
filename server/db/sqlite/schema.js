@@ -4,7 +4,8 @@ export const REQUIRED_SQLITE_TABLES = [
   'esl_command_log',
   'dead_letters',
   'users',
-  'refresh_tokens'
+  'refresh_tokens',
+  'products'
 ];
 
 export const SQLITE_SCHEMA_SQL = `
@@ -92,4 +93,19 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens (user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked_expires_at ON refresh_tokens (revoked, expires_at);
+
+CREATE TABLE IF NOT EXISTS products (
+  product_code TEXT PRIMARY KEY,
+  product_name TEXT NOT NULL,
+  price REAL NOT NULL,
+  quantity INTEGER NULL,
+  unit TEXT NULL,
+  vip_price REAL NULL,
+  origin_price REAL NULL,
+  promotion TEXT NULL,
+  last_synced_at TEXT NOT NULL,
+  sync_status TEXT NOT NULL DEFAULT 'PENDING'
+);
+
+CREATE INDEX IF NOT EXISTS idx_products_sync_status ON products (sync_status);
 `;

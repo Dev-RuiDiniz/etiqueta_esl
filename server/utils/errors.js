@@ -30,14 +30,18 @@ export function categorizeError(error) {
 
 export function toHttpErrorPayload(error, requestId = null) {
   const statusCode = Number(error?.statusCode ?? 500);
+  const data = { code: error?.code ?? 'INTERNAL_ERROR' };
+
+  if (error?.field) {
+    data.field = error.field;
+  }
+
   return {
     success: false,
     error_code: statusCode,
     error_msg: error?.message ?? 'Internal server error',
     request_id: requestId ?? `REQ-${Date.now()}`,
     received_at: new Date().toISOString(),
-    data: {
-      code: error?.code ?? 'INTERNAL_ERROR'
-    }
+    data
   };
 }
