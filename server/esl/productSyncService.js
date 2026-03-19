@@ -12,7 +12,7 @@ function chunkArray(input, size) {
 }
 
 export class EslProductSyncService {
-  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, productRepo, deadLetterRepo }) {
+  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, productRepo, deadLetterRepo, metrics }) {
     this.config = config;
     this.apiClient = apiClient;
     this.refreshService = refreshService;
@@ -20,6 +20,7 @@ export class EslProductSyncService {
     this.bindingRepo = bindingRepo;
     this.productRepo = productRepo;
     this.deadLetterRepo = deadLetterRepo;
+    this.metrics = metrics ?? { trackBusinessEvent() {} };
     this.outbox = [];
   }
 
@@ -131,6 +132,7 @@ export class EslProductSyncService {
       this.refreshService.enqueueRefresh(bindings.map((item) => item.esl_code));
     }
 
+    this.metrics.trackBusinessEvent('product_synced', result.success ? 'success' : 'failure');
     return result;
   }
 

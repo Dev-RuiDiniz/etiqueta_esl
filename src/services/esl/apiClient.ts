@@ -85,12 +85,47 @@ export async function eslRequest<TData>(path: string, init?: RequestInit): Promi
   const parsed = await parseJson(response);
 
   if (!response.ok) {
-    const msg = parsed?.error_msg || parsed?.message || `Erro ${response.status}`;
-    throw new Error(msg);
+    // Classificação de erro por status HTTP e código de erro do BFF.
+    if (response.status === 401) {
+      throw new Error('Sessão expirada. Faça login novamente.');
+    }
+
+    if (response.status === 403) {
+      throw new Error('Sem permissão para executar esta operação.');
+    }
+
+    if (response.status === 413) {
+      throw new Error('Arquivo ou dados muito grandes. Reduza o tamanho e tente novamente.');
+    }
+
+    if (response.status === 422) {
+      const field = parsed?.data?.field ? ` (campo: ${String(parsed.data.field)})` : '';
+      throw new Error(`Dados inválidos${field}: ${parsed?.error_msg ?? 'verifique os campos e tente novamente.'}`);
+    }
+
+    if (response.status === 429) {
+      throw new Error('Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.');
+    }
+
+    if (response.status >= 500) {
+      throw new Error('Erro no servidor. Aguarde e tente novamente.');
+    }
+
+    // Erro lógico do fornecedor (success=false mas HTTP 200).
+    if (parsed?.error_msg) {
+      throw new Error(parsed.error_msg);
+    }
+
+    throw new Error(`Erro ${response.status}. Tente novamente.`);
   }
 
   if (!parsed) {
     throw new Error('Resposta inválida do servidor.');
+  }
+
+  // Erro lógico do fornecedor (HTTP 200 mas success=false).
+  if (parsed.success === false && parsed.error_msg) {
+    throw new Error(parsed.error_msg);
   }
 
   return parsed as EslCommandResult<TData>;

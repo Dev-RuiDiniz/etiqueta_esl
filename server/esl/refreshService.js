@@ -2,11 +2,12 @@ import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorDirectPayload } from './eslMapper.js';
 
 export class EslRefreshService {
-  constructor({ config, apiClient, auditLogService, deadLetterRepo }) {
+  constructor({ config, apiClient, auditLogService, deadLetterRepo, metrics }) {
     this.config = config;
     this.apiClient = apiClient;
     this.auditLogService = auditLogService;
     this.deadLetterRepo = deadLetterRepo;
+    this.metrics = metrics ?? { trackBusinessEvent() {} };
     // Fila em memória para consolidar triggers e evitar excesso de bind_task.
     this.queuedEslCodes = new Set();
   }
@@ -75,6 +76,8 @@ export class EslRefreshService {
         this.deadLetterRepo
       );
     }
+
+    this.metrics.trackBusinessEvent('refresh_triggered', result.success ? 'success' : 'failure');
 
     return {
       ...result,

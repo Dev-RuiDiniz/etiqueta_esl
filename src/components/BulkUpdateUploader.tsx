@@ -1,64 +1,9 @@
 import { useMemo, useState } from 'react';
 import { simulateBulkItemAck, simulateBulkItemSend } from '../services/updatesService';
 import type { PriceUpdateItem } from '../types/updates';
+import { type ParsedCsvRow, parseCsvFile } from '../utils/csv';
 import { formatCurrencyBRL } from '../utils/format';
 import BulkUpdateTable from './BulkUpdateTable';
-
-type ParsedCsvRow = {
-  id: string;
-  sku?: string;
-  tagId?: string;
-  newPrice: number;
-};
-
-function parseCsvRows(content: string): ParsedCsvRow[] {
-  const parsedRows: ParsedCsvRow[] = [];
-  const lines = content
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
-  lines.forEach((line, index) => {
-    const delimiter = line.includes(';') ? ';' : ',';
-    const parts = line.split(delimiter).map((part) => part.trim());
-
-    if (parts.length < 2) {
-      return;
-    }
-
-    if (parts.length >= 3) {
-      const [sku, price, tagId] = parts;
-      const parsedPrice = Number(price.replace(',', '.'));
-
-      if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
-        return;
-      }
-
-      parsedRows.push({
-        id: `csv-${index}-${tagId || sku}`,
-        sku,
-        tagId: tagId || undefined,
-        newPrice: parsedPrice
-      });
-      return;
-    }
-
-    const [tagId, price] = parts;
-    const parsedPrice = Number(price.replace(',', '.'));
-
-    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
-      return;
-    }
-
-    parsedRows.push({
-      id: `csv-${index}-${tagId}`,
-      tagId,
-      newPrice: parsedPrice
-    });
-  });
-
-  return parsedRows;
-}
 
 
 function BulkUpdateUploader() {
@@ -90,16 +35,15 @@ function BulkUpdateUploader() {
     setParseError(null);
 
     try {
-      const content = await selectedFile.text();
-      const parsedRows = parseCsvRows(content);
+      const parsedRows = await parseCsvFile(selectedFile);
 
       if (parsedRows.length === 0) {
         setParseError('Não foi possível identificar linhas válidas no CSV.');
       }
 
       setCsvRows(parsedRows);
-    } catch {
-      setParseError('Erro ao ler arquivo CSV.');
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : 'Erro ao ler arquivo CSV.');
     } finally {
       setIsParsing(false);
     }
