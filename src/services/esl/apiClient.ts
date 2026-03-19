@@ -1,3 +1,4 @@
+import { clearTokens, getAccessToken, getRefreshToken, redirectToLogin, setTokens } from '../../lib/auth';
 import type { EslCommandResult } from '../../types/esl';
 
 const ESL_BFF_BASE = import.meta.env.VITE_ESL_BFF_BASE ?? '/api/esl';
@@ -22,21 +23,74 @@ async function parseJson(response: Response) {
   }
 }
 
+function buildAuthHeaders(): HeadersInit {
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+
+    if (!res.ok) return false;
+
+    const parsed = await parseJson(res);
+    if (!parsed?.data?.access_token) return false;
+
+    setTokens(parsed.data.access_token, parsed.data.refresh_token ?? refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function eslRequest<TData>(path: string, init?: RequestInit): Promise<EslCommandResult<TData>> {
-  // Cliente frontend -> BFF (nunca chama fornecedor direto no navegador).
-  const response = await fetch(joinPath(path), {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {})
+  // Cliente frontend → BFF (nunca chama fornecedor direto no navegador).
+  // Inclui Bearer token se disponível; faz refresh automático em 401.
+  const requestId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
+
+  const doFetch = (extraHeaders: HeadersInit = {}) =>
+    fetch(joinPath(path), {
+      ...init,
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-Request-ID': requestId,
+        ...buildAuthHeaders(),
+        ...(init?.headers ?? {}),
+        ...extraHeaders
+      }
+    });
+
+  let response = await doFetch();
+
+  if (response.status === 401) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      response = await doFetch();
+    } else {
+      clearTokens();
+      redirectToLogin();
+      throw new Error('Sessão expirada. Faça login novamente.');
     }
-  });
+  }
 
   const parsed = await parseJson(response);
 
-  if (!response.ok || !parsed) {
-    throw new Error(`BFF request failed (${response.status})`);
+  if (!response.ok) {
+    const msg = parsed?.error_msg || parsed?.message || `Erro ${response.status}`;
+    throw new Error(msg);
+  }
+
+  if (!parsed) {
+    throw new Error('Resposta inválida do servidor.');
   }
 
   return parsed as EslCommandResult<TData>;
