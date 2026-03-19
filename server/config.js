@@ -53,6 +53,11 @@ export function loadConfig() {
     authDefaultAdminEmail: (process.env.BFF_DEFAULT_ADMIN_EMAIL ?? 'admin@etiqueta.local').trim(),
     authDefaultAdminPassword: (process.env.BFF_DEFAULT_ADMIN_PASSWORD ?? 'Admin@123').trim(),
 
+    allowedOrigins: (process.env.ALLOWED_ORIGINS ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+
     metricsEnabled: asBoolean(process.env.METRICS_ENABLED, true),
     logLevel: (process.env.LOG_LEVEL ?? 'info').trim().toLowerCase(),
 

@@ -368,7 +368,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
   }
 
   async function handler(req, res) {
-    setCorsHeaders(res);
+    setCorsHeaders(res, req, config.allowedOrigins);
 
     const host = req.headers.host ?? `127.0.0.1:${config.port}`;
     const url = new URL(req.url ?? '/', `http://${host}`);

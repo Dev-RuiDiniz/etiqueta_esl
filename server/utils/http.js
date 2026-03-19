@@ -3,10 +3,26 @@ const JSON_HEADERS = {
 };
 
 // Helpers HTTP reaproveitáveis para reduzir boilerplate nas rotas.
-export function setCorsHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+export function setCorsHeaders(res, req, allowedOrigins = []) {
+  const origin = req?.headers?.origin ?? '';
+
+  // Em dev (lista vazia) ou quando a origem está na lista: echoar o header.
+  // Em produção sem correspondência: omitir — o browser bloqueia automaticamente.
+  const allowed =
+    allowedOrigins.length === 0 ||
+    allowedOrigins.includes(origin) ||
+    allowedOrigins.includes('*');
+
+  if (allowed && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  } else if (allowedOrigins.length === 0) {
+    // Fallback de desenvolvimento sem ALLOWED_ORIGINS configurado.
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Request-ID');
 }
 
 export function sendJson(res, statusCode, body) {
