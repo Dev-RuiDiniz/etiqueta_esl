@@ -27,6 +27,7 @@ export function createEslRoutes({
   ledService,
   auditLogService,
   deadLetterRepo,
+  bindingRepo,
   runJobsOnce
 }) {
   return async function route(req, res, url, body) {
@@ -109,6 +110,54 @@ export function createEslRoutes({
       });
 
       sendJson(res, 200, buildCommandResult(result));
+      return true;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/esl/products') {
+      const page = toPositiveInt(searchParams.get('page'), 1);
+      const size = toPositiveInt(searchParams.get('size'), 50);
+      const offset = (page - 1) * size;
+
+      const [products, total] = await Promise.all([
+        productSyncService.listProducts(size, offset),
+        productSyncService.countProducts()
+      ]);
+
+      sendJson(res, 200, {
+        success: true,
+        error_code: 0,
+        error_msg: '',
+        request_id: 'PROD-LIST',
+        received_at: new Date().toISOString(),
+        data: { products, total, page, size }
+      });
+      return true;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/esl/bindings') {
+      const productCode = searchParams.get('product_code') ?? '';
+
+      if (productCode) {
+        const bindings = await bindingRepo.listBindingsByProductCode(productCode);
+        sendJson(res, 200, {
+          success: true,
+          error_code: 0,
+          error_msg: '',
+          request_id: 'BIND-LIST',
+          received_at: new Date().toISOString(),
+          data: bindings
+        });
+      } else {
+        const bindings = await bindingRepo.listBindings();
+        sendJson(res, 200, {
+          success: true,
+          error_code: 0,
+          error_msg: '',
+          request_id: 'BIND-LIST',
+          received_at: new Date().toISOString(),
+          data: bindings
+        });
+      }
       return true;
     }
 

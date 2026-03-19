@@ -71,6 +71,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     refreshService,
     auditLogService,
     bindingRepo: repositories.bindingRepo,
+    productRepo: repositories.productRepo,
     deadLetterRepo: repositories.deadLetterRepo
   });
 
@@ -137,6 +138,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     ledService,
     auditLogService,
     deadLetterRepo: repositories.deadLetterRepo,
+    bindingRepo: repositories.bindingRepo,
     runJobsOnce
   });
 
