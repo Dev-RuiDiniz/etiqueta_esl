@@ -220,3 +220,4 @@ backups/
 
 !src/lib/
 !src/lib/**
+.claude/worktrees/optimistic-margulis/
