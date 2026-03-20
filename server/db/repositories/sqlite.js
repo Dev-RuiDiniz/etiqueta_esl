@@ -115,6 +115,24 @@ function mapStatusSummaryRow(row) {
   };
 }
 
+function mapCatalogRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    esl_code: row.esl_code,
+    display_name: row.display_name ?? null,
+    esltype_code: row.esltype_code ?? null,
+    ap_code: row.ap_code ?? null,
+    source: row.source,
+    registration_status: row.registration_status,
+    last_seen_at: row.last_seen_at ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
+}
+
 function buildDuplicateUserError() {
   const error = new Error('User email already exists.');
   error.code = 'USER_DUPLICATE_EMAIL';
@@ -133,6 +151,86 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   db.exec(SQLITE_SCHEMA_SQL);
 
   const getTableStmt = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?");
+
+  const insertCatalogStmt = db.prepare(`
+    INSERT INTO esl_catalog (
+      esl_code,
+      display_name,
+      esltype_code,
+      ap_code,
+      source,
+      registration_status,
+      last_seen_at,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      @esl_code,
+      @display_name,
+      @esltype_code,
+      @ap_code,
+      @source,
+      @registration_status,
+      @last_seen_at,
+      @created_at,
+      @updated_at
+    );
+  `);
+
+  const upsertCatalogStmt = db.prepare(`
+    INSERT INTO esl_catalog (
+      esl_code,
+      display_name,
+      esltype_code,
+      ap_code,
+      source,
+      registration_status,
+      last_seen_at,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      @esl_code,
+      @display_name,
+      @esltype_code,
+      @ap_code,
+      @source,
+      @registration_status,
+      @last_seen_at,
+      @created_at,
+      @updated_at
+    )
+    ON CONFLICT (esl_code)
+    DO UPDATE SET
+      display_name = excluded.display_name,
+      esltype_code = excluded.esltype_code,
+      ap_code = excluded.ap_code,
+      source = excluded.source,
+      registration_status = excluded.registration_status,
+      last_seen_at = excluded.last_seen_at,
+      updated_at = excluded.updated_at;
+  `);
+
+  const updateCatalogStmt = db.prepare(`
+    UPDATE esl_catalog
+    SET
+      display_name = @display_name,
+      esltype_code = @esltype_code,
+      ap_code = @ap_code,
+      source = @source,
+      registration_status = @registration_status,
+      last_seen_at = @last_seen_at,
+      updated_at = @updated_at
+    WHERE esl_code = @esl_code
+  `);
+
+  const getCatalogStmt = db.prepare(
+    'SELECT esl_code, display_name, esltype_code, ap_code, source, registration_status, last_seen_at, created_at, updated_at FROM esl_catalog WHERE esl_code = ?'
+  );
+  const listCatalogStmt = db.prepare(
+    'SELECT esl_code, display_name, esltype_code, ap_code, source, registration_status, last_seen_at, created_at, updated_at FROM esl_catalog ORDER BY updated_at DESC'
+  );
+  const countCatalogStmt = db.prepare('SELECT COUNT(*) AS count FROM esl_catalog');
 
   const upsertBindingStmt = db.prepare(`
     INSERT INTO esl_bindings (esl_code, product_code, template_id, bound_at, updated_at, binding_status)
@@ -332,6 +430,86 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
       });
     }
   });
+
+  const eslCatalogRepo = {
+    async createCatalogItem(input) {
+      const now = nowIso();
+      try {
+        insertCatalogStmt.run({
+          esl_code: String(input.esl_code),
+          display_name: input.display_name ?? null,
+          esltype_code: input.esltype_code ?? null,
+          ap_code: input.ap_code ?? null,
+          source: input.source ?? 'MANUAL',
+          registration_status: input.registration_status ?? 'REGISTERED',
+          last_seen_at: input.last_seen_at ?? null,
+          created_at: now,
+          updated_at: now
+        });
+      } catch (error) {
+        if (String(error?.code ?? '') === 'SQLITE_CONSTRAINT_PRIMARYKEY') {
+          const duplicate = new Error('ESL already registered.');
+          duplicate.code = 'ESL_ALREADY_REGISTERED';
+          throw duplicate;
+        }
+        throw error;
+      }
+
+      return mapCatalogRow(getCatalogStmt.get(String(input.esl_code)));
+    },
+
+    async upsertCatalogItem(input) {
+      const now = nowIso();
+      const existing = getCatalogStmt.get(String(input.esl_code));
+
+      upsertCatalogStmt.run({
+        esl_code: String(input.esl_code),
+        display_name: input.display_name ?? existing?.display_name ?? null,
+        esltype_code: input.esltype_code ?? existing?.esltype_code ?? null,
+        ap_code: input.ap_code ?? existing?.ap_code ?? null,
+        source: input.source ?? existing?.source ?? 'MANUAL',
+        registration_status: input.registration_status ?? existing?.registration_status ?? 'REGISTERED',
+        last_seen_at: input.last_seen_at ?? existing?.last_seen_at ?? null,
+        created_at: existing?.created_at ?? now,
+        updated_at: now
+      });
+
+      return mapCatalogRow(getCatalogStmt.get(String(input.esl_code)));
+    },
+
+    async updateCatalogItem(eslCode, updates) {
+      const existing = getCatalogStmt.get(String(eslCode));
+      if (!existing) {
+        return null;
+      }
+
+      updateCatalogStmt.run({
+        esl_code: String(eslCode),
+        display_name: typeof updates.display_name !== 'undefined' ? updates.display_name : existing.display_name,
+        esltype_code: typeof updates.esltype_code !== 'undefined' ? updates.esltype_code : existing.esltype_code,
+        ap_code: typeof updates.ap_code !== 'undefined' ? updates.ap_code : existing.ap_code,
+        source: updates.source ?? existing.source,
+        registration_status: updates.registration_status ?? existing.registration_status,
+        last_seen_at: typeof updates.last_seen_at !== 'undefined' ? updates.last_seen_at : existing.last_seen_at,
+        updated_at: nowIso()
+      });
+
+      return mapCatalogRow(getCatalogStmt.get(String(eslCode)));
+    },
+
+    async getCatalogItem(eslCode) {
+      return mapCatalogRow(getCatalogStmt.get(String(eslCode)));
+    },
+
+    async listCatalogItems() {
+      return listCatalogStmt.all().map((row) => mapCatalogRow(row));
+    },
+
+    async countCatalogItems() {
+      const row = countCatalogStmt.get();
+      return toSafeInteger(row?.count, 0);
+    }
+  };
 
   const bindingRepo = {
     async upsertBinding(binding) {
@@ -617,6 +795,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   return {
     mode: 'sqlite',
     storagePaths,
+    eslCatalogRepo,
     bindingRepo,
     statusRepo,
     commandLogRepo,

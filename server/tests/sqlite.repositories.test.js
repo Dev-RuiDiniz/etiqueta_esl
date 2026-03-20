@@ -61,6 +61,29 @@ describe('SQLite repositories', () => {
     expect(removedBinding.binding_status).toBe('UNBOUND');
     expect(await repos.bindingRepo.countBindings()).toBe(0);
 
+    const createdCatalogItem = await repos.eslCatalogRepo.createCatalogItem({
+      esl_code: 'ESL-CATALOG-001',
+      display_name: 'Ponta de gôndola'
+    });
+
+    expect(createdCatalogItem.source).toBe('MANUAL');
+
+    const upsertedCatalogItem = await repos.eslCatalogRepo.upsertCatalogItem({
+      esl_code: 'ESL-CATALOG-001',
+      source: 'VENDOR_DISCOVERY',
+      registration_status: 'BOUND',
+      ap_code: 'AP-01'
+    });
+
+    expect(upsertedCatalogItem.registration_status).toBe('BOUND');
+    expect(await repos.eslCatalogRepo.countCatalogItems()).toBe(1);
+
+    const updatedCatalogItem = await repos.eslCatalogRepo.updateCatalogItem('ESL-CATALOG-001', {
+      display_name: 'Corredor central'
+    });
+
+    expect(updatedCatalogItem.display_name).toBe('Corredor central');
+
     await repos.statusRepo.upsertStatusSnapshots([
       {
         esl_code: 'ESL-ONLINE',

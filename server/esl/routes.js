@@ -23,6 +23,7 @@ export function createEslRoutes({
   productSyncService,
   templateService,
   bindingService,
+  catalogService,
   refreshService,
   statusService,
   ledService,
@@ -55,6 +56,110 @@ export function createEslRoutes({
       const forceRefresh = searchParams.get('forceRefresh') === 'true';
 
       const result = await templateService.queryTemplates({ page, size, forceRefresh });
+      sendJson(res, 200, buildCommandResult(result));
+      return true;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/esl/catalog') {
+      const items = await catalogService.listCatalog();
+      sendJson(res, 200, {
+        success: true,
+        error_code: 0,
+        error_msg: '',
+        request_id: 'CATALOG',
+        received_at: new Date().toISOString(),
+        data: items
+      });
+      return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/esl/catalog') {
+      requireString(body.esl_code, 'esl_code', { maxLen: 32 });
+      if (typeof body.display_name !== 'undefined' && body.display_name !== null) {
+        requireString(body.display_name, 'display_name', { maxLen: 128 });
+      }
+
+      const item = await catalogService.createCatalogItem({
+        esl_code: String(body.esl_code).trim(),
+        display_name: body.display_name != null ? String(body.display_name).trim() : null
+      });
+
+      sendJson(res, 200, {
+        success: true,
+        error_code: 0,
+        error_msg: '',
+        request_id: 'CATALOG-CREATE',
+        received_at: new Date().toISOString(),
+        data: item
+      });
+      return true;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/esl/catalog/import') {
+      const result = await catalogService.importFromVendor({
+        pageSize: toPositiveInt(body.page_size, 100)
+      });
+      sendJson(res, 200, buildCommandResult(result));
+      return true;
+    }
+
+    const catalogUpdateMatch = pathname.match(/^\/api\/esl\/catalog\/([^/]+)$/);
+    if (req.method === 'PATCH' && catalogUpdateMatch) {
+      const eslCode = decodeURIComponent(catalogUpdateMatch[1]);
+      const item = await catalogService.updateCatalogItem(eslCode, {
+        display_name: typeof body.display_name !== 'undefined' ? (body.display_name == null ? null : String(body.display_name).trim()) : undefined,
+        esltype_code: typeof body.esltype_code !== 'undefined' ? (body.esltype_code == null ? null : String(body.esltype_code).trim()) : undefined,
+        ap_code: typeof body.ap_code !== 'undefined' ? (body.ap_code == null ? null : String(body.ap_code).trim()) : undefined
+      });
+
+      if (!item) {
+        sendJson(res, 404, {
+          success: false,
+          error_code: 404,
+          error_msg: 'Etiqueta não encontrada.',
+          request_id: 'CATALOG-UPDATE',
+          received_at: new Date().toISOString(),
+          data: null
+        });
+        return true;
+      }
+
+      sendJson(res, 200, {
+        success: true,
+        error_code: 0,
+        error_msg: '',
+        request_id: 'CATALOG-UPDATE',
+        received_at: new Date().toISOString(),
+        data: item
+      });
+      return true;
+    }
+
+    const catalogBindMatch = pathname.match(/^\/api\/esl\/catalog\/([^/]+)\/bind$/);
+    if (req.method === 'POST' && catalogBindMatch) {
+      const eslCode = decodeURIComponent(catalogBindMatch[1]);
+      requireString(body.product_code, 'product_code', { maxLen: 64 });
+      const templateId = requirePositiveInt(body.template_id, 'template_id', { allowNull: true });
+      const result = await catalogService.bindCatalogItem(eslCode, {
+        product_code: String(body.product_code).trim(),
+        template_id: templateId
+      });
+      sendJson(res, 200, buildCommandResult(result));
+      return true;
+    }
+
+    const catalogUnbindMatch = pathname.match(/^\/api\/esl\/catalog\/([^/]+)\/unbind$/);
+    if (req.method === 'POST' && catalogUnbindMatch) {
+      const eslCode = decodeURIComponent(catalogUnbindMatch[1]);
+      const result = await catalogService.unbindCatalogItem(eslCode);
+      sendJson(res, 200, buildCommandResult(result));
+      return true;
+    }
+
+    const catalogSearchMatch = pathname.match(/^\/api\/esl\/catalog\/([^/]+)\/search$/);
+    if (req.method === 'POST' && catalogSearchMatch) {
+      const eslCode = decodeURIComponent(catalogSearchMatch[1]);
+      const result = await catalogService.searchCatalogItem(eslCode);
       sendJson(res, 200, buildCommandResult(result));
       return true;
     }

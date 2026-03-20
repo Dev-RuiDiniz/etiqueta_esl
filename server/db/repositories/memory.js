@@ -4,6 +4,7 @@ function buildId(prefix) {
 }
 
 export function createMemoryRepositories() {
+  const catalogByEslCode = new Map();
   const bindingsByEslCode = new Map();
   const snapshotsByEslCode = new Map();
   const commandLogs = [];
@@ -11,6 +12,86 @@ export function createMemoryRepositories() {
   const usersById = new Map();
   const usersByEmail = new Map();
   const refreshTokensByHash = new Map();
+
+  const eslCatalogRepo = {
+    async createCatalogItem(input) {
+      const now = new Date().toISOString();
+      const existing = catalogByEslCode.get(input.esl_code);
+      if (existing) {
+        const error = new Error('ESL already registered.');
+        error.code = 'ESL_ALREADY_REGISTERED';
+        throw error;
+      }
+
+      const record = {
+        esl_code: String(input.esl_code),
+        display_name: input.display_name ?? null,
+        esltype_code: input.esltype_code ?? null,
+        ap_code: input.ap_code ?? null,
+        source: input.source ?? 'MANUAL',
+        registration_status: input.registration_status ?? 'REGISTERED',
+        last_seen_at: input.last_seen_at ?? null,
+        created_at: now,
+        updated_at: now
+      };
+
+      catalogByEslCode.set(record.esl_code, record);
+      return record;
+    },
+
+    async upsertCatalogItem(input) {
+      const now = new Date().toISOString();
+      const existing = catalogByEslCode.get(input.esl_code);
+
+      const record = {
+        esl_code: String(input.esl_code),
+        display_name: input.display_name ?? existing?.display_name ?? null,
+        esltype_code: input.esltype_code ?? existing?.esltype_code ?? null,
+        ap_code: input.ap_code ?? existing?.ap_code ?? null,
+        source: input.source ?? existing?.source ?? 'MANUAL',
+        registration_status: input.registration_status ?? existing?.registration_status ?? 'REGISTERED',
+        last_seen_at: input.last_seen_at ?? existing?.last_seen_at ?? null,
+        created_at: existing?.created_at ?? now,
+        updated_at: now
+      };
+
+      catalogByEslCode.set(record.esl_code, record);
+      return record;
+    },
+
+    async updateCatalogItem(eslCode, updates) {
+      const existing = catalogByEslCode.get(eslCode);
+      if (!existing) {
+        return null;
+      }
+
+      const next = {
+        ...existing,
+        display_name: typeof updates.display_name !== 'undefined' ? updates.display_name : existing.display_name,
+        esltype_code: typeof updates.esltype_code !== 'undefined' ? updates.esltype_code : existing.esltype_code,
+        ap_code: typeof updates.ap_code !== 'undefined' ? updates.ap_code : existing.ap_code,
+        source: updates.source ?? existing.source,
+        registration_status: updates.registration_status ?? existing.registration_status,
+        last_seen_at: typeof updates.last_seen_at !== 'undefined' ? updates.last_seen_at : existing.last_seen_at,
+        updated_at: new Date().toISOString()
+      };
+
+      catalogByEslCode.set(eslCode, next);
+      return next;
+    },
+
+    async getCatalogItem(eslCode) {
+      return catalogByEslCode.get(eslCode) ?? null;
+    },
+
+    async listCatalogItems() {
+      return Array.from(catalogByEslCode.values()).sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+    },
+
+    async countCatalogItems() {
+      return catalogByEslCode.size;
+    }
+  };
 
   const bindingRepo = {
     async upsertBinding(binding) {
@@ -352,6 +433,7 @@ export function createMemoryRepositories() {
 
   return {
     mode: 'memory',
+    eslCatalogRepo,
     bindingRepo,
     statusRepo,
     commandLogRepo,

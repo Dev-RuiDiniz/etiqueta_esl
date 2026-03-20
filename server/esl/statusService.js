@@ -34,12 +34,13 @@ function normalizeCountData(result) {
 }
 
 export class EslStatusService {
-  constructor({ config, apiClient, auditLogService, statusRepo, deadLetterRepo }) {
+  constructor({ config, apiClient, auditLogService, statusRepo, deadLetterRepo, eslCatalogRepo }) {
     this.config = config;
     this.apiClient = apiClient;
     this.auditLogService = auditLogService;
     this.statusRepo = statusRepo;
     this.deadLetterRepo = deadLetterRepo;
+    this.eslCatalogRepo = eslCatalogRepo;
   }
 
   async syncStatus() {
@@ -117,6 +118,16 @@ export class EslStatusService {
     // Normaliza payload do fornecedor e persiste snapshot para consumo rápido no dashboard.
     const snapshots = extractArrayFromResult(result).map((item) => fromVendorStatusRecord(item));
     await this.statusRepo.upsertStatusSnapshots(snapshots);
+    for (const snapshot of snapshots) {
+      await this.eslCatalogRepo?.upsertCatalogItem?.({
+        esl_code: snapshot.esl_code,
+        esltype_code: snapshot.esltype_code ?? null,
+        ap_code: snapshot.ap_code ?? null,
+        source: 'VENDOR_DISCOVERY',
+        registration_status: 'REGISTERED',
+        last_seen_at: snapshot.updated_at ?? snapshot.created_at ?? new Date().toISOString()
+      });
+    }
 
     await this.auditLogService.record({
       operation: 'esl.query',
@@ -151,6 +162,16 @@ export class EslStatusService {
     // Consulta direcionada usada por validações pós-atualização e tela de detalhe.
     const snapshots = extractArrayFromResult(result).map((item) => fromVendorStatusRecord(item));
     await this.statusRepo.upsertStatusSnapshots(snapshots);
+    for (const snapshot of snapshots) {
+      await this.eslCatalogRepo?.upsertCatalogItem?.({
+        esl_code: snapshot.esl_code,
+        esltype_code: snapshot.esltype_code ?? null,
+        ap_code: snapshot.ap_code ?? null,
+        source: 'VENDOR_DISCOVERY',
+        registration_status: 'REGISTERED',
+        last_seen_at: snapshot.updated_at ?? snapshot.created_at ?? new Date().toISOString()
+      });
+    }
 
     await this.auditLogService.record({
       operation: 'esl.query_status',

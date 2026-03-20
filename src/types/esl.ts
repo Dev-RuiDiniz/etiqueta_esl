@@ -27,6 +27,62 @@ export type EslBindingInput = {
   template_id?: number;
 };
 
+export type EslCatalogSource = 'MANUAL' | 'VENDOR_DISCOVERY';
+export type EslCatalogRegistrationStatus = 'REGISTERED' | 'BOUND' | 'ARCHIVED';
+
+export type EslCatalogItem = {
+  esl_code: string;
+  display_name: string | null;
+  esltype_code: string | null;
+  ap_code: string | null;
+  source: EslCatalogSource;
+  registration_status: EslCatalogRegistrationStatus;
+  created_at: string;
+  updated_at: string;
+  last_seen_at: string | null;
+  binding: {
+    esl_code: string;
+    product_code: string;
+    template_id?: number | null;
+    bound_at: string;
+    updated_at: string;
+    binding_status: string;
+  } | null;
+  snapshot: EslStatusSnapshot | null;
+};
+
+export type CreateEslCatalogInput = {
+  esl_code: string;
+  display_name?: string;
+};
+
+export type UpdateEslCatalogInput = {
+  display_name?: string | null;
+  esltype_code?: string | null;
+  ap_code?: string | null;
+};
+
+export type BindCatalogEslInput = {
+  product_code: string;
+  template_id?: number | null;
+};
+
+export type EslProductListItem = {
+  product_code: string;
+  product_name: string;
+  price: number;
+  quantity: number | null;
+  last_synced_at: string;
+  sync_status: string;
+};
+
+export type EslProductsListResponse = {
+  products: EslProductListItem[];
+  total: number;
+  page: number;
+  size: number;
+};
+
 export type EslRefreshCommand = {
   esl_codes?: string[];
 };
@@ -43,6 +99,7 @@ export type EslStatusSnapshot = {
   esltype_code: string | null;
   created_at: string | null;
   updated_at: string | null;
+  seen_at?: string | null;
 };
 
 export type EslStatusSummary = {

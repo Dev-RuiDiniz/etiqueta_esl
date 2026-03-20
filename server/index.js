@@ -8,6 +8,7 @@ import { createRepositories } from './db/repositories/index.js';
 import { EslApiClient } from './esl/eslApiClient.js';
 import { EslAuditLogService } from './esl/eslAuditLogService.js';
 import { EslBindingService } from './esl/bindService.js';
+import { EslCatalogService } from './esl/catalogService.js';
 import { EslLedService } from './esl/ledService.js';
 import { EslProductSyncService } from './esl/productSyncService.js';
 import { EslRefreshService } from './esl/refreshService.js';
@@ -85,7 +86,8 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     auditLogService,
     bindingRepo: repositories.bindingRepo,
     deadLetterRepo: repositories.deadLetterRepo,
-    metrics
+    metrics,
+    eslCatalogRepo: repositories.eslCatalogRepo
   });
 
   const statusService = new EslStatusService({
@@ -93,7 +95,8 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     apiClient,
     auditLogService,
     statusRepo: repositories.statusRepo,
-    deadLetterRepo: repositories.deadLetterRepo
+    deadLetterRepo: repositories.deadLetterRepo,
+    eslCatalogRepo: repositories.eslCatalogRepo
   });
 
   const templateService = new EslTemplateService({
@@ -108,6 +111,17 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     apiClient,
     auditLogService,
     deadLetterRepo: repositories.deadLetterRepo
+  });
+
+  const catalogService = new EslCatalogService({
+    eslCatalogRepo: repositories.eslCatalogRepo,
+    bindingRepo: repositories.bindingRepo,
+    statusRepo: repositories.statusRepo,
+    productRepo: repositories.productRepo,
+    templateService,
+    statusService,
+    bindingService,
+    ledService
   });
 
   const authService = new AuthService({
@@ -140,6 +154,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
     refreshService,
     statusService,
     ledService,
+    catalogService,
     auditLogService,
     deadLetterRepo: repositories.deadLetterRepo,
     bindingRepo: repositories.bindingRepo,
@@ -483,6 +498,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
       statusService,
       templateService,
       ledService,
+      catalogService,
       authService
     },
     startJobs,

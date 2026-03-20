@@ -1,4 +1,5 @@
 export const REQUIRED_SQLITE_TABLES = [
+  'esl_catalog',
   'esl_bindings',
   'esl_status_snapshots',
   'esl_command_log',
@@ -9,6 +10,21 @@ export const REQUIRED_SQLITE_TABLES = [
 ];
 
 export const SQLITE_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS esl_catalog (
+  esl_code TEXT PRIMARY KEY,
+  display_name TEXT NULL,
+  esltype_code TEXT NULL,
+  ap_code TEXT NULL,
+  source TEXT NOT NULL DEFAULT 'MANUAL',
+  registration_status TEXT NOT NULL DEFAULT 'REGISTERED',
+  last_seen_at TEXT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_esl_catalog_source ON esl_catalog (source);
+CREATE INDEX IF NOT EXISTS idx_esl_catalog_registration_status ON esl_catalog (registration_status);
+
 CREATE TABLE IF NOT EXISTS esl_bindings (
   esl_code TEXT PRIMARY KEY,
   product_code TEXT NOT NULL,

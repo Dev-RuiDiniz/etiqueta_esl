@@ -2,7 +2,7 @@ import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorBindMultiplePayload, toVendorBindPayload } from './eslMapper.js';
 
 export class EslBindingService {
-  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, deadLetterRepo, metrics }) {
+  constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, deadLetterRepo, metrics, eslCatalogRepo }) {
     this.config = config;
     this.apiClient = apiClient;
     this.refreshService = refreshService;
@@ -10,6 +10,7 @@ export class EslBindingService {
     this.bindingRepo = bindingRepo;
     this.deadLetterRepo = deadLetterRepo;
     this.metrics = metrics ?? { trackBusinessEvent() {} };
+    this.eslCatalogRepo = eslCatalogRepo;
   }
 
   async bind(binding) {
@@ -54,6 +55,11 @@ export class EslBindingService {
         esl_code: binding.esl_code,
         product_code: binding.product_code,
         template_id: binding.template_id
+      });
+      await this.eslCatalogRepo?.upsertCatalogItem?.({
+        esl_code: binding.esl_code,
+        source: 'MANUAL',
+        registration_status: 'BOUND'
       });
       this.refreshService.enqueueRefresh([binding.esl_code]);
     }
@@ -102,6 +108,11 @@ export class EslBindingService {
     if (result.success) {
       for (const binding of bindings) {
         await this.bindingRepo.upsertBinding(binding);
+        await this.eslCatalogRepo?.upsertCatalogItem?.({
+          esl_code: binding.esl_code,
+          source: 'MANUAL',
+          registration_status: 'BOUND'
+        });
       }
 
       this.refreshService.enqueueRefresh(bindings.map((item) => item.esl_code));
@@ -151,6 +162,11 @@ export class EslBindingService {
     if (result.success) {
       // Remove vínculo local e agenda atualização para refletir no display.
       await this.bindingRepo.removeBinding(eslCode);
+      await this.eslCatalogRepo?.upsertCatalogItem?.({
+        esl_code: eslCode,
+        source: 'MANUAL',
+        registration_status: 'REGISTERED'
+      });
       this.refreshService.enqueueRefresh([eslCode]);
     }
 

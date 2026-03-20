@@ -143,3 +143,10 @@ export async function eslPost<TData, TBody>(path: string, body: TBody): Promise<
     body: JSON.stringify(body)
   });
 }
+
+export async function eslPatch<TData, TBody>(path: string, body: TBody): Promise<EslCommandResult<TData>> {
+  return eslRequest<TData>(path, {
+    method: 'PATCH',
+    body: JSON.stringify(body)
+  });
+}

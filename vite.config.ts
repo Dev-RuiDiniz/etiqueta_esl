@@ -7,6 +7,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    test: {
+      exclude: ['**/.claude/**', '**/dist/**', '**/node_modules/**']
+    },
     server: {
       proxy: {
         // Proxy local para manter frontend desacoplado de CORS e de host externo.
