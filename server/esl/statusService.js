@@ -122,12 +122,14 @@ export class EslStatusService {
     const snapshots = extractArrayFromResult(result).map((item) => fromVendorStatusRecord(item));
     await this.statusRepo.upsertStatusSnapshots(snapshots);
     for (const snapshot of snapshots) {
+      const existingCatalog = await this.eslCatalogRepo?.getCatalogItem?.(snapshot.esl_code);
       await this.eslCatalogRepo?.upsertCatalogItem?.({
         esl_code: snapshot.esl_code,
         esltype_code: snapshot.esltype_code ?? null,
         ap_code: snapshot.ap_code ?? null,
+        expected_ap_code: existingCatalog?.expected_ap_code ?? snapshot.ap_code ?? null,
         source: 'VENDOR_DISCOVERY',
-        registration_status: 'REGISTERED',
+        registration_status: existingCatalog?.registration_status === 'BOUND' ? 'BOUND' : 'REGISTERED',
         last_seen_at: snapshot.updated_at ?? snapshot.created_at ?? new Date().toISOString()
       });
     }
@@ -167,12 +169,14 @@ export class EslStatusService {
     const snapshots = extractArrayFromResult(result).map((item) => fromVendorStatusRecord(item));
     await this.statusRepo.upsertStatusSnapshots(snapshots);
     for (const snapshot of snapshots) {
+      const existingCatalog = await this.eslCatalogRepo?.getCatalogItem?.(snapshot.esl_code);
       await this.eslCatalogRepo?.upsertCatalogItem?.({
         esl_code: snapshot.esl_code,
         esltype_code: snapshot.esltype_code ?? null,
         ap_code: snapshot.ap_code ?? null,
+        expected_ap_code: existingCatalog?.expected_ap_code ?? snapshot.ap_code ?? null,
         source: 'VENDOR_DISCOVERY',
-        registration_status: 'REGISTERED',
+        registration_status: existingCatalog?.registration_status === 'BOUND' ? 'BOUND' : 'REGISTERED',
         last_seen_at: snapshot.updated_at ?? snapshot.created_at ?? new Date().toISOString()
       });
     }

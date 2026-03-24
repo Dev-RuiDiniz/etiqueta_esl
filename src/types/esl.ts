@@ -28,13 +28,14 @@ export type EslBindingInput = {
 };
 
 export type EslCatalogSource = 'MANUAL' | 'VENDOR_DISCOVERY';
-export type EslCatalogRegistrationStatus = 'REGISTERED' | 'BOUND' | 'ARCHIVED';
+export type EslCatalogRegistrationStatus = 'PENDING_DISCOVERY' | 'REGISTERED' | 'BOUND' | 'ARCHIVED';
 
 export type EslCatalogItem = {
   esl_code: string;
   display_name: string | null;
   esltype_code: string | null;
   ap_code: string | null;
+  expected_ap_code: string | null;
   source: EslCatalogSource;
   registration_status: EslCatalogRegistrationStatus;
   created_at: string;
@@ -54,12 +55,14 @@ export type EslCatalogItem = {
 export type CreateEslCatalogInput = {
   esl_code: string;
   display_name?: string;
+  expected_ap_code?: string;
 };
 
 export type UpdateEslCatalogInput = {
   display_name?: string | null;
   esltype_code?: string | null;
   ap_code?: string | null;
+  expected_ap_code?: string | null;
 };
 
 export type BindCatalogEslInput = {
@@ -114,6 +117,43 @@ export type EslTemplateSummary = {
   esltype_code: string | null;
   esltemplate_name: string | null;
   esltemplate_default: number;
+};
+
+export type EslTagOperationalStatus = 'ONLINE' | 'OFFLINE' | 'UNKNOWN';
+
+export type EslStationTagOverview = {
+  esl_code: string;
+  display_name: string | null;
+  ap_code: string | null;
+  expected_ap_code: string | null;
+  station_code: string;
+  esltype_code: string | null;
+  status: EslTagOperationalStatus;
+  battery: number | null;
+  compatibility_known: boolean;
+  registration_status: EslCatalogRegistrationStatus;
+  binding: EslCatalogItem['binding'];
+  snapshot: EslStatusSnapshot | null;
+  compatible_templates: EslTemplateSummary[];
+};
+
+export type EslStationOverview = {
+  station_code: string;
+  ap_code: string | null;
+  total_tags: number;
+  online_tags: number;
+  offline_tags: number;
+  tags: EslStationTagOverview[];
+};
+
+export type EslStationsOverviewResponse = {
+  stations: EslStationOverview[];
+  totals: {
+    stations: number;
+    tags: number;
+    online: number;
+    offline: number;
+  };
 };
 
 export type EslLedSearchInput = {

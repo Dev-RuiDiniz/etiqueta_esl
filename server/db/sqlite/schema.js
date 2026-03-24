@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS esl_catalog (
   display_name TEXT NULL,
   esltype_code TEXT NULL,
   ap_code TEXT NULL,
+  expected_ap_code TEXT NULL,
   source TEXT NOT NULL DEFAULT 'MANUAL',
   registration_status TEXT NOT NULL DEFAULT 'REGISTERED',
   last_seen_at TEXT NULL,
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS esl_catalog (
 
 CREATE INDEX IF NOT EXISTS idx_esl_catalog_source ON esl_catalog (source);
 CREATE INDEX IF NOT EXISTS idx_esl_catalog_registration_status ON esl_catalog (registration_status);
+CREATE INDEX IF NOT EXISTS idx_esl_catalog_expected_ap_code ON esl_catalog (expected_ap_code);
 
 CREATE TABLE IF NOT EXISTS esl_bindings (
   esl_code TEXT PRIMARY KEY,

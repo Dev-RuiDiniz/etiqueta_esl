@@ -125,6 +125,7 @@ function mapCatalogRow(row) {
     display_name: row.display_name ?? null,
     esltype_code: row.esltype_code ?? null,
     ap_code: row.ap_code ?? null,
+    expected_ap_code: row.expected_ap_code ?? null,
     source: row.source,
     registration_status: row.registration_status,
     last_seen_at: row.last_seen_at ?? null,
@@ -150,6 +151,12 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   db.pragma('busy_timeout = 5000');
   db.exec(SQLITE_SCHEMA_SQL);
 
+  const catalogColumns = db.prepare('PRAGMA table_info(esl_catalog)').all();
+  const catalogColumnNames = new Set(catalogColumns.map((column) => String(column.name)));
+  if (!catalogColumnNames.has('expected_ap_code')) {
+    db.exec('ALTER TABLE esl_catalog ADD COLUMN expected_ap_code TEXT NULL;');
+  }
+
   const getTableStmt = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?");
 
   const insertCatalogStmt = db.prepare(`
@@ -158,6 +165,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
       display_name,
       esltype_code,
       ap_code,
+      expected_ap_code,
       source,
       registration_status,
       last_seen_at,
@@ -169,6 +177,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
       @display_name,
       @esltype_code,
       @ap_code,
+      @expected_ap_code,
       @source,
       @registration_status,
       @last_seen_at,
@@ -183,6 +192,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
       display_name,
       esltype_code,
       ap_code,
+      expected_ap_code,
       source,
       registration_status,
       last_seen_at,
@@ -194,6 +204,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
       @display_name,
       @esltype_code,
       @ap_code,
+      @expected_ap_code,
       @source,
       @registration_status,
       @last_seen_at,
@@ -205,6 +216,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
       display_name = excluded.display_name,
       esltype_code = excluded.esltype_code,
       ap_code = excluded.ap_code,
+      expected_ap_code = excluded.expected_ap_code,
       source = excluded.source,
       registration_status = excluded.registration_status,
       last_seen_at = excluded.last_seen_at,
@@ -217,6 +229,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
       display_name = @display_name,
       esltype_code = @esltype_code,
       ap_code = @ap_code,
+      expected_ap_code = @expected_ap_code,
       source = @source,
       registration_status = @registration_status,
       last_seen_at = @last_seen_at,
@@ -225,10 +238,10 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   `);
 
   const getCatalogStmt = db.prepare(
-    'SELECT esl_code, display_name, esltype_code, ap_code, source, registration_status, last_seen_at, created_at, updated_at FROM esl_catalog WHERE esl_code = ?'
+    'SELECT esl_code, display_name, esltype_code, ap_code, expected_ap_code, source, registration_status, last_seen_at, created_at, updated_at FROM esl_catalog WHERE esl_code = ?'
   );
   const listCatalogStmt = db.prepare(
-    'SELECT esl_code, display_name, esltype_code, ap_code, source, registration_status, last_seen_at, created_at, updated_at FROM esl_catalog ORDER BY updated_at DESC'
+    'SELECT esl_code, display_name, esltype_code, ap_code, expected_ap_code, source, registration_status, last_seen_at, created_at, updated_at FROM esl_catalog ORDER BY updated_at DESC'
   );
   const countCatalogStmt = db.prepare('SELECT COUNT(*) AS count FROM esl_catalog');
 
@@ -440,6 +453,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
           display_name: input.display_name ?? null,
           esltype_code: input.esltype_code ?? null,
           ap_code: input.ap_code ?? null,
+          expected_ap_code: input.expected_ap_code ?? null,
           source: input.source ?? 'MANUAL',
           registration_status: input.registration_status ?? 'REGISTERED',
           last_seen_at: input.last_seen_at ?? null,
@@ -467,6 +481,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
         display_name: input.display_name ?? existing?.display_name ?? null,
         esltype_code: input.esltype_code ?? existing?.esltype_code ?? null,
         ap_code: input.ap_code ?? existing?.ap_code ?? null,
+        expected_ap_code: input.expected_ap_code ?? existing?.expected_ap_code ?? null,
         source: input.source ?? existing?.source ?? 'MANUAL',
         registration_status: input.registration_status ?? existing?.registration_status ?? 'REGISTERED',
         last_seen_at: input.last_seen_at ?? existing?.last_seen_at ?? null,
@@ -488,6 +503,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
         display_name: typeof updates.display_name !== 'undefined' ? updates.display_name : existing.display_name,
         esltype_code: typeof updates.esltype_code !== 'undefined' ? updates.esltype_code : existing.esltype_code,
         ap_code: typeof updates.ap_code !== 'undefined' ? updates.ap_code : existing.ap_code,
+        expected_ap_code: typeof updates.expected_ap_code !== 'undefined' ? updates.expected_ap_code : existing.expected_ap_code,
         source: updates.source ?? existing.source,
         registration_status: updates.registration_status ?? existing.registration_status,
         last_seen_at: typeof updates.last_seen_at !== 'undefined' ? updates.last_seen_at : existing.last_seen_at,

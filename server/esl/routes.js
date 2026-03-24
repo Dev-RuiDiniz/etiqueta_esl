@@ -73,15 +73,32 @@ export function createEslRoutes({
       return true;
     }
 
+    if (req.method === 'GET' && pathname === '/api/esl/stations/overview') {
+      const overview = await catalogService.buildStationOverview();
+      sendJson(res, 200, {
+        success: true,
+        error_code: 0,
+        error_msg: '',
+        request_id: 'STATION-OVERVIEW',
+        received_at: new Date().toISOString(),
+        data: overview
+      });
+      return true;
+    }
+
     if (req.method === 'POST' && pathname === '/api/esl/catalog') {
       requireString(body.esl_code, 'esl_code', { maxLen: 32 });
       if (typeof body.display_name !== 'undefined' && body.display_name !== null) {
         requireString(body.display_name, 'display_name', { maxLen: 128 });
       }
+      if (typeof body.expected_ap_code !== 'undefined' && body.expected_ap_code !== null) {
+        requireString(body.expected_ap_code, 'expected_ap_code', { maxLen: 64 });
+      }
 
       const item = await catalogService.createCatalogItem({
         esl_code: String(body.esl_code).trim(),
-        display_name: body.display_name != null ? String(body.display_name).trim() : null
+        display_name: body.display_name != null ? String(body.display_name).trim() : null,
+        expected_ap_code: body.expected_ap_code != null ? String(body.expected_ap_code).trim() : null
       });
 
       sendJson(res, 200, {
@@ -109,7 +126,8 @@ export function createEslRoutes({
       const item = await catalogService.updateCatalogItem(eslCode, {
         display_name: typeof body.display_name !== 'undefined' ? (body.display_name == null ? null : String(body.display_name).trim()) : undefined,
         esltype_code: typeof body.esltype_code !== 'undefined' ? (body.esltype_code == null ? null : String(body.esltype_code).trim()) : undefined,
-        ap_code: typeof body.ap_code !== 'undefined' ? (body.ap_code == null ? null : String(body.ap_code).trim()) : undefined
+        ap_code: typeof body.ap_code !== 'undefined' ? (body.ap_code == null ? null : String(body.ap_code).trim()) : undefined,
+        expected_ap_code: typeof body.expected_ap_code !== 'undefined' ? (body.expected_ap_code == null ? null : String(body.expected_ap_code).trim()) : undefined
       });
 
       if (!item) {

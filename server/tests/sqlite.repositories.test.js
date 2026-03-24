@@ -63,10 +63,14 @@ describe('SQLite repositories', () => {
 
     const createdCatalogItem = await repos.eslCatalogRepo.createCatalogItem({
       esl_code: 'ESL-CATALOG-001',
-      display_name: 'Ponta de gôndola'
+      display_name: 'Ponta de gôndola',
+      expected_ap_code: 'AP-EXPECTED-01',
+      registration_status: 'PENDING_DISCOVERY'
     });
 
     expect(createdCatalogItem.source).toBe('MANUAL');
+    expect(createdCatalogItem.expected_ap_code).toBe('AP-EXPECTED-01');
+    expect(createdCatalogItem.registration_status).toBe('PENDING_DISCOVERY');
 
     const upsertedCatalogItem = await repos.eslCatalogRepo.upsertCatalogItem({
       esl_code: 'ESL-CATALOG-001',

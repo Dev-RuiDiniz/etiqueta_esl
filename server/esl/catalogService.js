@@ -6,6 +6,36 @@ function buildCatalogItem(item, binding = null, snapshot = null) {
   };
 }
 
+function normalizeStationCode(value) {
+  return value && String(value).trim() ? String(value).trim() : 'UNASSIGNED';
+}
+
+function resolveRegistrationStatusForDiscovery(existingStatus) {
+  return existingStatus === 'BOUND' ? 'BOUND' : 'REGISTERED';
+}
+
+function buildTagOverview(item, compatibleTemplates) {
+  const snapshot = item.snapshot ?? null;
+  const battery =
+    snapshot?.battery_percent != null ? Number(snapshot.battery_percent) : snapshot?.esl_battery != null ? Number(snapshot.esl_battery) : null;
+
+  return {
+    esl_code: item.esl_code,
+    display_name: item.display_name,
+    ap_code: item.ap_code ?? item.snapshot?.ap_code ?? null,
+    expected_ap_code: item.expected_ap_code ?? null,
+    station_code: normalizeStationCode(item.ap_code ?? item.snapshot?.ap_code ?? item.expected_ap_code ?? null),
+    esltype_code: item.esltype_code ?? item.snapshot?.esltype_code ?? null,
+    status: !snapshot ? 'UNKNOWN' : snapshot.online === 1 ? 'ONLINE' : 'OFFLINE',
+    battery,
+    compatibility_known: Boolean(item.esltype_code ?? item.snapshot?.esltype_code),
+    registration_status: item.registration_status,
+    binding: item.binding,
+    snapshot,
+    compatible_templates: compatibleTemplates
+  };
+}
+
 export class EslCatalogService {
   constructor({ eslCatalogRepo, bindingRepo, statusRepo, productRepo, templateService, statusService, bindingService, ledService }) {
     this.eslCatalogRepo = eslCatalogRepo;
@@ -33,12 +63,72 @@ export class EslCatalogService {
     return items.map((item) => buildCatalogItem(item, bindingByEsl.get(item.esl_code) ?? null, snapshotByEsl.get(item.esl_code) ?? null));
   }
 
+  async buildStationOverview() {
+    const [catalogItems, templateResult] = await Promise.all([
+      this.listCatalog(),
+      this.templateService.queryTemplates({ page: 1, size: 200, forceRefresh: false })
+    ]);
+
+    const templates = Array.isArray(templateResult?.data) ? templateResult.data : [];
+    const grouped = new Map();
+
+    for (const item of catalogItems) {
+      const eslTypeCode = item.esltype_code ?? item.snapshot?.esltype_code ?? null;
+      const compatibleTemplates = eslTypeCode ? templates.filter((template) => template.esltype_code === eslTypeCode) : [];
+      const tag = buildTagOverview(item, compatibleTemplates);
+      const stationCode = tag.station_code;
+
+      if (!grouped.has(stationCode)) {
+        grouped.set(stationCode, {
+          station_code: stationCode,
+          ap_code: stationCode === 'UNASSIGNED' ? null : stationCode,
+          total_tags: 0,
+          online_tags: 0,
+          offline_tags: 0,
+          tags: []
+        });
+      }
+
+      const station = grouped.get(stationCode);
+      station.tags.push(tag);
+      station.total_tags += 1;
+
+      if (tag.status === 'ONLINE') {
+        station.online_tags += 1;
+      } else if (tag.status === 'OFFLINE') {
+        station.offline_tags += 1;
+      }
+    }
+
+    const stations = Array.from(grouped.values())
+      .map((station) => ({
+        ...station,
+        tags: station.tags.sort((a, b) => a.esl_code.localeCompare(b.esl_code))
+      }))
+      .sort((a, b) => {
+        if (a.station_code === 'UNASSIGNED') return 1;
+        if (b.station_code === 'UNASSIGNED') return -1;
+        return a.station_code.localeCompare(b.station_code);
+      });
+
+    return {
+      stations,
+      totals: {
+        stations: stations.length,
+        tags: stations.reduce((acc, station) => acc + station.total_tags, 0),
+        online: stations.reduce((acc, station) => acc + station.online_tags, 0),
+        offline: stations.reduce((acc, station) => acc + station.offline_tags, 0)
+      }
+    };
+  }
+
   async createCatalogItem(input) {
     return this.eslCatalogRepo.createCatalogItem({
       esl_code: input.esl_code,
       display_name: input.display_name ?? null,
+      expected_ap_code: input.expected_ap_code ?? null,
       source: 'MANUAL',
-      registration_status: 'REGISTERED'
+      registration_status: 'PENDING_DISCOVERY'
     });
   }
 
@@ -46,7 +136,8 @@ export class EslCatalogService {
     return this.eslCatalogRepo.updateCatalogItem(eslCode, {
       display_name: updates.display_name,
       esltype_code: updates.esltype_code,
-      ap_code: updates.ap_code
+      ap_code: updates.ap_code,
+      expected_ap_code: updates.expected_ap_code
     });
   }
 
@@ -62,8 +153,9 @@ export class EslCatalogService {
       display_name: existing?.display_name ?? null,
       esltype_code: snapshot.esltype_code ?? existing?.esltype_code ?? null,
       ap_code: snapshot.ap_code ?? existing?.ap_code ?? null,
+      expected_ap_code: existing?.expected_ap_code ?? snapshot.ap_code ?? null,
       source: existing?.source ?? 'VENDOR_DISCOVERY',
-      registration_status: existing?.registration_status ?? 'REGISTERED',
+      registration_status: resolveRegistrationStatusForDiscovery(existing?.registration_status),
       last_seen_at: snapshot.updated_at ?? snapshot.created_at ?? new Date().toISOString()
     });
   }
@@ -117,6 +209,13 @@ export class EslCatalogService {
       throw error;
     }
 
+    if (catalogItem.registration_status === 'PENDING_DISCOVERY') {
+      const error = new Error('Etiqueta ainda não foi descoberta no vendor/base station. Sincronize a descoberta antes de vincular.');
+      error.statusCode = 409;
+      error.code = 'ESL_PENDING_DISCOVERY';
+      throw error;
+    }
+
     if (!product) {
       const error = new Error('Produto não encontrado.');
       error.statusCode = 404;
@@ -142,10 +241,32 @@ export class EslCatalogService {
       throw error;
     }
 
+    if (catalogItem.registration_status === 'PENDING_DISCOVERY') {
+      const error = new Error('Etiqueta ainda não foi descoberta no vendor/base station. Não é possível desvincular antes do registro real.');
+      error.statusCode = 409;
+      error.code = 'ESL_PENDING_DISCOVERY';
+      throw error;
+    }
+
     return this.bindingService.unbind(eslCode);
   }
 
   async searchCatalogItem(eslCode) {
+    const catalogItem = await this.eslCatalogRepo.getCatalogItem(eslCode);
+    if (!catalogItem) {
+      const error = new Error('Etiqueta não cadastrada.');
+      error.statusCode = 404;
+      error.code = 'ESL_CATALOG_NOT_FOUND';
+      throw error;
+    }
+
+    if (catalogItem.registration_status === 'PENDING_DISCOVERY') {
+      const error = new Error('Etiqueta ainda não foi descoberta no vendor/base station. Não é possível localizar antes do registro real.');
+      error.statusCode = 409;
+      error.code = 'ESL_PENDING_DISCOVERY';
+      throw error;
+    }
+
     return this.ledService.search([eslCode]);
   }
 }

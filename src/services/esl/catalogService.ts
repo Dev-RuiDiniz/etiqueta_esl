@@ -3,12 +3,17 @@ import type {
   CreateEslCatalogInput,
   EslCatalogItem,
   EslCommandResult,
+  EslStationsOverviewResponse,
   UpdateEslCatalogInput
 } from '../../types/esl';
 import { eslGet, eslPatch, eslPost } from './apiClient';
 
 export function listCatalog(): Promise<EslCommandResult<EslCatalogItem[]>> {
   return eslGet('/catalog');
+}
+
+export function getStationsOverview(): Promise<EslCommandResult<EslStationsOverviewResponse>> {
+  return eslGet('/stations/overview');
 }
 
 export function createCatalogItem(input: CreateEslCatalogInput): Promise<EslCommandResult<EslCatalogItem>> {
