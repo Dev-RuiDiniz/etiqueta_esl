@@ -45,6 +45,8 @@ export class EslProductSyncService {
   }
 
   async flushPendingUpserts(batchSize = 50) {
+    // A outbox local desacopla ingestão de produto do envio ao fornecedor,
+    // permitindo reprocesso simples quando há falha transitória.
     if (this.outbox.length === 0) {
       return {
         success: true,
@@ -85,6 +87,8 @@ export class EslProductSyncService {
   }
 
   async upsertProduct(product) {
+    // No fluxo unitário persistimos o catálogo local somente após confirmação
+    // do fornecedor para evitar marcar como sincronizado algo que falhou no upstream.
     const vendorProduct = toVendorProduct(product);
 
     const result = await runWithRetry(
@@ -137,6 +141,8 @@ export class EslProductSyncService {
   }
 
   async upsertProducts(products) {
+    // O fornecedor aceita lote serializado em f1; após sucesso espalhamos o efeito
+    // localmente por produto para manter refresh e catálogo coerentes.
     const vendorProducts = toVendorProductsArray(products);
 
     const result = await runWithRetry(

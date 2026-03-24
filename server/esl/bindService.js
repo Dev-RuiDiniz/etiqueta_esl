@@ -14,6 +14,8 @@ export class EslBindingService {
   }
 
   async bind(binding) {
+    // Bind tem efeito local e remoto: fornecedor recebe o vínculo, o repositório
+    // guarda o estado operacional e a fila de refresh garante propagação ao display.
     const payload = toVendorBindPayload(binding);
 
     const result = await runWithRetry(
@@ -70,6 +72,8 @@ export class EslBindingService {
   }
 
   async bindMany(bindings) {
+    // O fluxo em lote compartilha a mesma semântica do bind unitário,
+    // mas preserva auditoria e reconciliação por item após sucesso.
     const payload = toVendorBindMultiplePayload(bindings);
 
     const result = await runWithRetry(
@@ -122,6 +126,8 @@ export class EslBindingService {
   }
 
   async unbind(eslCode) {
+    // Unbind remove o relacionamento lógico, mas ainda agenda refresh para que
+    // o estado físico da etiqueta seja atualizado no ciclo seguinte.
     const payload = {
       f1: eslCode
     };

@@ -35,7 +35,7 @@ F --> E --> D --> C --> B --> A
 - Camada ESL em `src/services/esl/*`.
 - Tipos de contrato em `src/types/esl.ts`.
 - Polling operacional em `src/hooks/useEslStatus.ts`.
-- Token store em `src/lib/auth.ts` (localStorage); auto-refresh JWT em `src/services/esl/apiClient.ts`.
+- Sessão JWT em `src/lib/auth.ts` (localStorage), tela `/login` e auto-refresh em `src/services/esl/apiClient.ts`.
 - Upload CSV em `src/components/BulkUpdateUploader.tsx`; parse/validação em `src/utils/csv.ts`.
 
 ### BFF
@@ -145,7 +145,7 @@ Proteções adicionais:
 - **Rate limit no login**: 10 tentativas por IP por janela de 15 minutos. Retorna HTTP 429 com header `Retry-After`.
 - **CORS restrito**: quando `ALLOWED_ORIGINS` é definido, apenas origens listadas recebem `Access-Control-Allow-Origin`. Em desenvolvimento (variável vazia), aceita qualquer origem.
 - **Payload limit**: corpo JSON limitado a 1 MB por requisição. Excedente retorna HTTP 413.
-- **Frontend auto-refresh**: `apiClient.ts` repete requisição com novo token em caso de 401; em falha, redireciona para login.
+- **Frontend login integrado**: o Vite proxya `/api/esl/*` e `/api/auth/*`, e o frontend repete a requisição com novo token em caso de 401; em falha, redireciona para `/login`.
 
 Importante:
 
@@ -213,6 +213,26 @@ Execução:
 npm run bff
 npm run dev
 ```
+
+### Modo real com autenticação JWT habilitada
+
+`.env` adicional:
+
+```env
+BFF_AUTH_ENABLED=true
+JWT_ACCESS_SECRET=troque_este_valor
+JWT_REFRESH_SECRET=troque_este_valor
+JWT_ACCESS_TTL=15m
+JWT_REFRESH_TTL=7d
+BFF_DEFAULT_ADMIN_EMAIL=admin@etiqueta.local
+BFF_DEFAULT_ADMIN_PASSWORD=TroqueEstaSenha!
+```
+
+Com auth habilitada:
+
+- a UI expõe a rota `/login`
+- o frontend usa `/api/auth/login`, `/api/auth/refresh` e `/api/auth/logout`
+- o operador volta automaticamente para a tela de login quando a sessão expira
 
 ### Modo memória (apenas dev/testes)
 
@@ -317,6 +337,11 @@ Além das métricas de infraestrutura, o BFF expõe contadores de eventos de neg
 - Manual operacional do cliente: `docs/MANUAL_EXECUCAO_CLIENTE.md`
 - Checklist de demo: `docs/DEMO_CHECKLIST.md`
 - Estabilização histórica: `docs/ESTABILIZACAO_2026-03-04.md`
+
+Observação de conectividade:
+
+- O repositório integra a API cloud da GreenDisplay; a base station aparece na arquitetura operacional, mas não é configurada diretamente por código nesta aplicação.
+- O smoke test seguro realizado nesta auditoria retornou HTTP `200` em `query_count`, com contagem zerada, o que comprova conectividade básica com o fornecedor, não operação física em campo.
 
 Base vendor utilizada:
 

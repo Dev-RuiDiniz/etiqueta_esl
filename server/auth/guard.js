@@ -5,6 +5,8 @@ export async function authorizeRequest(req, pathname, config, authService) {
     return null;
   }
 
+  // Apenas a superfície /api/esl/* é protegida. Health, readiness e auth pública
+  // permanecem acessíveis para operação básica e bootstrap de sessão.
   if (!pathname.startsWith('/api/esl/')) {
     return null;
   }

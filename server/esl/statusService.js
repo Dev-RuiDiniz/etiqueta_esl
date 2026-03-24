@@ -70,6 +70,8 @@ export class EslStatusService {
   }
 
   async queryCount() {
+    // query_count é a base dos ciclos de polling: primeiro dimensionamos o universo,
+    // depois paginamos as consultas completas sem adivinhar o total de etiquetas.
     const result = await runWithRetry(
       () => this.apiClient.get('/esl/query_count', {}),
       {
@@ -116,6 +118,7 @@ export class EslStatusService {
     );
 
     // Normaliza payload do fornecedor e persiste snapshot para consumo rápido no dashboard.
+    // O catálogo local também é enriquecido com ESLs descobertas dinamicamente.
     const snapshots = extractArrayFromResult(result).map((item) => fromVendorStatusRecord(item));
     await this.statusRepo.upsertStatusSnapshots(snapshots);
     for (const snapshot of snapshots) {
@@ -159,7 +162,8 @@ export class EslStatusService {
       { deadLetterRepo: this.deadLetterRepo }
     );
 
-    // Consulta direcionada usada por validações pós-atualização e tela de detalhe.
+    // Consulta direcionada usada por validações pós-atualização, troubleshooting
+    // e telas que precisam checar um subconjunto específico de etiquetas.
     const snapshots = extractArrayFromResult(result).map((item) => fromVendorStatusRecord(item));
     await this.statusRepo.upsertStatusSnapshots(snapshots);
     for (const snapshot of snapshots) {

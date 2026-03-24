@@ -1,5 +1,8 @@
 import { ChangeEvent } from 'react';
+import { hasActiveSession } from '../lib/auth';
+import { useNavigate } from '../lib/router';
 import { syncStatus, type Store } from '../mocks';
+import { logout } from '../services/authService';
 
 type TopbarProps = {
   stores: Store[];
@@ -9,10 +12,17 @@ type TopbarProps = {
 };
 
 function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarProps) {
+  const navigate = useNavigate();
   const currentStore = stores.find((store) => store.id === selectedStoreId);
+  const sessionActive = hasActiveSession();
 
   const handleStoreChange = (event: ChangeEvent<HTMLSelectElement>) => {
     onStoreChange(event.target.value);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -46,6 +56,12 @@ function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarPr
           </span>
           <p className="small text-muted mb-0 mt-1">{syncStatus.lastSyncText}</p>
         </div>
+
+        {sessionActive ? (
+          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void handleLogout()}>
+            Sair
+          </button>
+        ) : null}
       </div>
     </header>
   );

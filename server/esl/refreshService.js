@@ -13,6 +13,8 @@ export class EslRefreshService {
   }
 
   enqueueRefresh(eslCodes) {
+    // A fila em memória deduplica ESLs para evitar explosão de bind_task
+    // quando múltiplas operações tocam a mesma etiqueta no mesmo intervalo.
     for (const eslCode of eslCodes) {
       if (!eslCode) {
         continue;
@@ -36,6 +38,8 @@ export class EslRefreshService {
     const snapshot = new Set(this.queuedEslCodes);
     this.queuedEslCodes.clear();
 
+    // bind_task é um trigger global do fornecedor: o snapshot preserva quantas
+    // ESLs motivaram o disparo, mesmo que a API não receba a lista explicitamente.
     const payload = {};
 
     const result = await runWithRetry(
@@ -102,7 +106,8 @@ export class EslRefreshService {
   }
 
   async directUpdate(items) {
-    // Fluxo de urgência: envia conteúdo/template diretamente para as etiquetas.
+    // Fluxo de urgência: envia conteúdo/template diretamente para as etiquetas,
+    // sem depender da fila consolidada de bind/unbind.
     const payload = toVendorDirectPayload(items);
 
     const result = await runWithRetry(

@@ -93,6 +93,7 @@ BFF_DEFAULT_ADMIN_PASSWORD=TroqueEstaSenha!
 Importante:
 
 - Com auth ativa, rotas `/api/esl/*` exigem token bearer.
+- O frontend possui rota `/login` e usa `/api/auth/*` via proxy do Vite quando executado em desenvolvimento.
 
 ## 5. Inicialização dos serviços
 
@@ -122,6 +123,7 @@ Validação UI:
 
 - Abrir URL do Vite (normalmente `http://127.0.0.1:5173`)
 - Conferir carregamento das telas principais
+- Se `BFF_AUTH_ENABLED=true`, autenticar em `/login` com o usuário admin configurado no `.env`
 
 ## 7. Operação de backup e restore local
 
@@ -190,6 +192,8 @@ Comportamento:
   - revisar segredos JWT se auth estiver ativa
 - `401 Unauthorized`:
   - token ausente/expirado/inválido
+- Contagem zerada no `query_count`:
+  - indica conectividade com vendor, mas não confirma etiquetas ativas ou operação física da base station
 - `403 Forbidden`:
   - perfil sem permissão para a rota
 - Falha de restore:

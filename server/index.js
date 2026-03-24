@@ -47,6 +47,8 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
   const logger = createLogger(config);
   const repositories = createRepositories(config);
 
+  // O runtime é montado em camadas para manter dependências explícitas:
+  // repositórios -> serviços de domínio -> rotas -> jobs -> servidor HTTP.
   const auditLogService = new EslAuditLogService({
     commandLogRepo: repositories.commandLogRepo
   });
@@ -198,6 +200,8 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
   }
 
   async function sendReadyStatus(res, requestId = null) {
+    // Readiness vai além do processo vivo: valida configuração, banco,
+    // autenticação e conectividade mínima com o fornecedor.
     const missingEslConfig = getMissingEslConfig(config);
     let dbReady = false;
     let dbReadyError = null;
@@ -256,6 +260,8 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
   const stopJobs = [];
 
   function startJobs() {
+    // Jobs só são ligados depois de toda a malha de serviços estar pronta.
+    // Isso evita que tarefas periódicas corram com dependências incompletas.
     if (config.backupEnabled) {
       if (repositories.mode === 'sqlite' && typeof repositories.createBackup === 'function') {
         stopJobs.push(
@@ -387,6 +393,8 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
   }
 
   async function handler(req, res) {
+    // O pipeline HTTP centraliza CORS, parse do body, auth, roteamento e métricas
+    // para manter o BFF sem framework, mas ainda previsível e observável.
     setCorsHeaders(res, req, config.allowedOrigins);
 
     const host = req.headers.host ?? `127.0.0.1:${config.port}`;

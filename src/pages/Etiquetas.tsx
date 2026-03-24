@@ -74,6 +74,7 @@ function Etiquetas() {
     error,
     run: reloadCatalog
   } = useAsync(async () => {
+    // O catálogo agrega dados locais e snapshots remotos já reconciliados no BFF.
     const result = await listCatalog();
     return result.data ?? [];
   }, []);

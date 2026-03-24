@@ -3,6 +3,7 @@ const WRITE_ROLES = ['operador', 'admin'];
 const ADMIN_ROLES = ['admin'];
 
 export function resolveRequiredRoles(method, pathname) {
+  // Regras mínimas por endpoint crítico. O restante cai em GET=leitura / mutação=escrita.
   if (pathname === '/api/esl/jobs/run') {
     return ADMIN_ROLES;
   }

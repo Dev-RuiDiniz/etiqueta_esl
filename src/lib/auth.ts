@@ -1,5 +1,5 @@
 // Store de autenticação baseado em localStorage + módulo singleton.
-// Usado pelo apiClient para anexar Bearer token e fazer refresh automático.
+// Mantém o frontend desacoplado de qualquer gerenciador global de estado.
 
 const ACCESS_KEY = 'esl_access_token';
 const REFRESH_KEY = 'esl_refresh_token';
@@ -38,10 +38,17 @@ export function clearTokens(): void {
   }
 }
 
-export function redirectToLogin(): void {
+export function hasActiveSession(): boolean {
+  return Boolean(getAccessToken());
+}
+
+export function redirectToLogin(returnTo?: string): void {
   clearTokens();
   // Redireciona para a rota de login sem dependência de React Router.
+  // Mantemos o destino original para facilitar o retorno após novo login.
   if (typeof window !== 'undefined') {
-    window.location.href = '/login';
+    const current = returnTo ?? `${window.location.pathname}${window.location.search}`;
+    const safeReturnTo = current.startsWith('/login') ? '/dashboard' : current;
+    window.location.href = `/login?next=${encodeURIComponent(safeReturnTo)}`;
   }
 }

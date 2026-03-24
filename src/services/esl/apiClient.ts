@@ -54,6 +54,7 @@ async function tryRefreshToken(): Promise<boolean> {
 export async function eslRequest<TData>(path: string, init?: RequestInit): Promise<EslCommandResult<TData>> {
   // Cliente frontend → BFF (nunca chama fornecedor direto no navegador).
   // Inclui Bearer token se disponível; faz refresh automático em 401.
+  // Se a sessão não puder ser renovada, o usuário é levado à tela de login.
   const requestId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
 
   const doFetch = (extraHeaders: HeadersInit = {}) =>
@@ -77,7 +78,7 @@ export async function eslRequest<TData>(path: string, init?: RequestInit): Promi
       response = await doFetch();
     } else {
       clearTokens();
-      redirectToLogin();
+      redirectToLogin(`${window.location.pathname}${window.location.search}`);
       throw new Error('Sessão expirada. Faça login novamente.');
     }
   }

@@ -62,7 +62,8 @@ function normalizeResult(parsedBody, statusCode, requestId) {
 
 export class EslApiClient {
   constructor(config, { metrics = null, logger = console } = {}) {
-    // Cliente HTTP único para API ESL, garantindo assinatura e padrão de resposta.
+    // Cliente HTTP único para API ESL, garantindo assinatura, timeout,
+    // observabilidade e um contrato de resposta estável para o restante do BFF.
     this.config = config;
     this.metrics = metrics;
     this.logger = logger;
@@ -131,6 +132,8 @@ export class EslApiClient {
       const endpointLabel = `${method} ${normalizedPath}`;
       this.metrics?.trackVendorRequest?.(endpointLabel, durationSeconds, response.status, response.status >= 400 ? 'vendor_http_error' : null);
 
+      // 5xx do fornecedor é tratado como falha de infraestrutura/upstream;
+      // respostas 2xx/4xx seguem para normalização e lógica de domínio.
       if (response.status >= 500) {
         const error = new Error(`ESL upstream HTTP ${response.status}`);
         error.code = 'ESL_UPSTREAM_5XX';

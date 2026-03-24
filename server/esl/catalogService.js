@@ -19,6 +19,8 @@ export class EslCatalogService {
   }
 
   async listCatalog() {
+    // O catálogo é uma visão composta: cadastro local + vínculo + último snapshot.
+    // Essa junção evita round-trips extras no frontend e concentra reconciliação aqui.
     const [items, bindings, snapshots] = await Promise.all([
       this.eslCatalogRepo.listCatalogItems(),
       this.bindingRepo.listBindings(),
@@ -67,6 +69,8 @@ export class EslCatalogService {
   }
 
   async importFromVendor({ pageSize = 100 } = {}) {
+    // Importação faz reconciliação pull-based a partir do vendor/cloud.
+    // Não configura base station; apenas reflete o que já foi descoberto por ela.
     const countResult = await this.statusService.queryCount();
     if (!countResult.success) {
       return countResult;
@@ -99,6 +103,8 @@ export class EslCatalogService {
   }
 
   async bindCatalogItem(eslCode, input) {
+    // Antes do bind remoto validamos a consistência local para retornar erro claro
+    // ao operador quando a ESL ou o produto ainda não existem no catálogo.
     const [catalogItem, product] = await Promise.all([
       this.eslCatalogRepo.getCatalogItem(eslCode),
       this.productRepo.getProduct(input.product_code)

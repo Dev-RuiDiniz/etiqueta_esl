@@ -1,22 +1,22 @@
-# Sistema e Integração ESL (Visão Técnica)
+# Sistema e Integração ESL (Visão Técnica Consolidada)
 
-## 1. Visão geral
+## 1. Resumo executivo
 
-O projeto `etiqueta_esl` integra uma aplicação React com o ecossistema ESL GreenDisplay por meio de um BFF Node.js.
+O projeto `etiqueta_esl` é uma plataforma operacional para etiquetas eletrônicas de prateleira (ESL) com:
 
-Objetivos da integração:
+- frontend React/Vite para operação diária
+- BFF Node.js para autenticação, regras de negócio e integração com o fornecedor
+- persistência local em SQLite no PC do cliente
+- integração com a API cloud da GreenDisplay
+- jobs de sincronização, refresh, reconciliação, retenção e backup
 
-- Orquestrar operações de produto, bind/unbind, refresh e status de etiquetas.
-- Isolar credenciais vendor no backend.
-- Garantir rastreabilidade operacional (auditoria e dead-letter).
-- Operar com persistência local em SQLite no PC do cliente.
-- Manter backup local automático e restore manual assistido.
+O sistema não se conecta diretamente por código à base station. A integração implementada no repositório valida e consome a camada cloud/vendor; a base station aparece como parte da topologia operacional do fabricante.
 
 ## 2. Arquitetura fim a fim
 
 ```mermaid
 flowchart LR
-A[Frontend React] -->|/api/esl/*| B[BFF Node.js]
+A[Frontend React] -->|/api/esl/* e /api/auth/*| B[BFF Node.js]
 B -->|/api/{i_client_id} + sign| C[API ESL GreenDisplay]
 C --> D[Cloud ESL]
 D --> E[Base Station/AP]
@@ -26,58 +26,94 @@ F --> E --> D --> C --> B --> A
 
 Componentes:
 
-1. Frontend: interface operacional (dashboard, etiquetas, atualizações, alertas, histórico).
-2. BFF: autenticação, autorização, assinatura vendor, retry, jobs, persistência e observabilidade.
-3. API ESL: endpoints de produto, vínculo, refresh, status e templates.
-4. Base Station/AP: ponte física entre cloud e etiquetas.
-5. Etiquetas: dispositivo final de exibição.
+1. Frontend: dashboard, etiquetas, produtos, atualizações, alertas, histórico e login.
+2. BFF: autenticação JWT, RBAC, assinatura vendor, retry, jobs, métricas e persistência.
+3. API ESL GreenDisplay: superfície remota usada para produto, bind, refresh, status e templates.
+4. Base Station/AP: ponte física entre cloud do fornecedor e etiquetas.
+5. Etiquetas ESL: dispositivo final de exibição.
 
-## 3. Implementação da integração no repositório
+## 3. Estrutura do repositório
 
 ### Backend
 
-- `server/index.js`: bootstrap, health/readiness, metrics, auth routes, roteamento ESL, tratamento de erro.
-- `server/esl/*`: serviços de domínio (produto, bind, refresh, status, template, LED, retry, auditoria, mapper).
-- `server/auth/*`: autenticação local JWT e regras de RBAC.
-- `server/db/repositories/*`: abstração de repositório (`memory` e `sqlite`).
-- `server/db/sqlite/*`: schema, paths e manutenção (integridade, backup, replace).
-- `server/jobs/*`: sincronização, refresh, polling, reconciliação, dead-letter, retenção e backup.
-- `server/observability/*`: logger e métricas.
+- `server/index.js`: bootstrap do runtime, readiness, metrics, auth, rotas ESL e shutdown.
+- `server/esl/*`: serviços de domínio (`status`, `bind`, `refresh`, `catalog`, `product sync`, `template`, `LED`).
+- `server/auth/*`: JWT, hash de senha, guardas e RBAC.
+- `server/db/repositories/*`: abstração de persistência (`sqlite` e `memory`).
+- `server/db/sqlite/*`: schema, paths, manutenção, backup e restore.
+- `server/jobs/*`: jobs periódicos de sincronização e manutenção.
+- `server/observability/*`: logger estruturado e métricas Prometheus.
 
 ### Frontend
 
-- `src/services/esl/*`: cliente e serviços para endpoints do BFF.
-- `src/hooks/useEslStatus.ts`: atualização periódica de estado.
-- `src/types/esl.ts`: contratos públicos da integração.
-- `src/services/tagsService.ts` e `src/services/updatesService.ts`: comutação de fluxo `mock` x `real`.
+- `src/App.tsx`: roteamento principal e separação entre shell operacional e tela de login.
+- `src/pages/*`: páginas de operação.
+- `src/services/esl/*`: cliente do BFF e serviços de domínio no navegador.
+- `src/services/authService.ts`: login/logout contra `/api/auth/*`.
+- `src/lib/auth.ts`: armazenamento local de tokens e redirecionamento para `/login`.
+- `src/hooks/useEslStatus.ts`: polling operacional.
 
-## 4. Modos de operação
+## 4. Fluxos principais
 
-### Modo `mock`
+### 4.1 Login e sessão
 
-- `VITE_API_MODE=mock`
-- Dados simulados para demonstração.
-- Sem dependência de API vendor.
+1. Operador acessa `/login`.
+2. Frontend chama `POST /api/auth/login`.
+3. BFF valida usuário local, emite `access_token` e `refresh_token`.
+4. Tokens ficam em `localStorage`.
+5. Chamadas a `/api/esl/*` incluem `Bearer token`.
+6. Em `401`, o frontend tenta `POST /api/auth/refresh`.
+7. Se o refresh falhar, os tokens são limpos e o usuário é redirecionado para `/login`.
 
-### Modo `real`
+Observação:
 
-- `VITE_API_MODE=real`
-- Frontend chama BFF (`/api/esl/*`).
-- BFF chama vendor com `/{i_client_id}`, `store_code`, `is_base64` e `sign`.
+- Quando `BFF_AUTH_ENABLED=false`, a aplicação continua operando sem exigir login.
+- A rota `/login` existe para compatibilidade com ambientes protegidos e para tratar expiração de sessão.
 
-Persistência BFF:
+### 4.2 Sincronização de produto
 
-- `sqlite` (padrão): arquivo local com backup local.
-- `memory`: uso de desenvolvimento/testes.
+1. Produto entra por `upsert` unitário ou em lote.
+2. `productSyncService` transforma o payload para o formato do fornecedor.
+3. O BFF chama `/product/create` ou `/product/create_multiple`.
+4. Em sucesso, persiste o produto localmente.
+5. O serviço localiza ESLs vinculadas ao produto e agenda refresh.
+6. Tudo fica registrado em auditoria; falhas vão para dead-letter quando aplicável.
 
-## 5. Persistência SQLite local
+### 4.3 Bind/unbind
 
-Implementação por contrato único de repositório:
+1. Operador escolhe etiqueta e produto.
+2. O catálogo local valida se ambos existem.
+3. `bindingService` chama o fornecedor.
+4. Em sucesso, persiste o vínculo local.
+5. A ESL é colocada na fila de refresh.
 
-- `createRepositories(config)` seleciona `sqlite` ou `memory`.
-- Serviços consomem interfaces, sem acoplamento ao storage.
+### 4.4 Refresh
 
-Entidades persistidas no SQLite:
+1. Operações de bind/unbind/produto alimentam uma fila em memória.
+2. `refreshService` deduplica ESLs para evitar excesso de `bind_task`.
+3. O job periódico ou a rota manual dispara `POST /esl/bind_task`.
+4. Em falha, a fila do snapshot atual é restaurada para tentativa posterior.
+
+### 4.5 Status e descoberta
+
+1. `query_count` define o universo de etiquetas.
+2. `query` paginado traz snapshots.
+3. Snapshots atualizam `esl_status_snapshots`.
+4. O catálogo local é enriquecido com ESLs descobertas via vendor/cloud.
+
+### 4.6 Busca física por LED
+
+- `ledService` chama `/esl/search` para localizar uma etiqueta fisicamente.
+- Esse fluxo continua sendo um comando vendor/cloud; não há integração local direta com a base station.
+
+## 5. Persistência local e operação
+
+Persistência suportada:
+
+- `sqlite`: modo padrão para cliente final
+- `memory`: desenvolvimento e testes
+
+Entidades persistidas:
 
 - `esl_bindings`
 - `esl_status_snapshots`
@@ -85,111 +121,155 @@ Entidades persistidas no SQLite:
 - `dead_letters`
 - `users`
 - `refresh_tokens`
+- `products`
 
-Diretórios locais:
+Backup e restore:
 
-- `<BFF_DATA_DIR>/data/etiqueta_esl.sqlite`
-- `<BFF_DATA_DIR>/backups/*.sqlite`
+- backup automático local com retenção configurável
+- restore manual por `npm run bff:restore -- <arquivo.sqlite>`
+- validação de integridade antes e depois do replace do banco
 
-Se `BFF_DATA_DIR` não for definido, usa diretório padrão no perfil do usuário.
+## 6. Endpoints principais
 
-## 6. Backup e restore local
+### Operação ESL
 
-Backup automático:
+- `GET /api/esl/health`
+- `GET /api/esl/templates`
+- `GET /api/esl/catalog`
+- `POST /api/esl/catalog/import`
+- `GET /api/esl/status`
+- `GET /api/esl/status/summary`
+- `GET /api/esl/status/dashboard`
+- `POST /api/esl/status/sync`
+- `GET /api/esl/products`
+- `POST /api/esl/products/upsert`
+- `POST /api/esl/products/upsert-bulk`
+- `GET /api/esl/bindings`
+- `POST /api/esl/bind`
+- `POST /api/esl/bind/bulk`
+- `POST /api/esl/unbind`
+- `POST /api/esl/refresh/trigger`
+- `POST /api/esl/led/search`
+- `POST /api/esl/direct`
+- `GET /api/esl/audit`
+- `GET /api/esl/audit/history`
+- `GET /api/esl/alerts`
+- `GET /api/esl/dead-letters`
+- `POST /api/esl/jobs/run`
 
-- Job dedicado controlado por `BFF_BACKUP_ENABLED`.
-- Intervalo em `BFF_BACKUP_INTERVAL_MS` (padrão: 24h).
-- Retenção em `BFF_BACKUP_RETENTION_COUNT` (padrão: 7).
-- Processo: checkpoint WAL, cópia atômica, validação de integridade e expurgo de antigos.
-
-Restore manual:
-
-- `npm run bff:restore -- <arquivo.sqlite> [--yes]`
-- Fluxo: valida backup, confirmação (ou `--yes`), snapshot pré-restore, replace do banco ativo e validação final.
-
-## 7. Autenticação JWT e RBAC
-
-Rotas públicas de auth:
+### Operação BFF
 
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`
+- `GET /healthz`
+- `GET /readyz`
+- `GET /metrics`
 
-Comportamento:
+## 7. Segurança e autenticação
 
-- `BFF_AUTH_ENABLED=false`: rotas `/api/esl/*` abertas (compatibilidade).
-- `BFF_AUTH_ENABLED=true`: `Bearer <access_token>` obrigatório em `/api/esl/*`.
+Quando `BFF_AUTH_ENABLED=true`:
 
-Perfis:
+- `/api/esl/*` exige bearer token
+- `viewer` tem leitura
+- `operador` tem leitura e escrita
+- `admin` tem acesso total, incluindo endpoints administrativos
 
-- `admin`: total, incluindo rotas administrativas.
-- `operador`: operação e monitoramento.
-- `viewer`: leitura.
+Proteções adicionais:
 
-## 8. Observabilidade e operação
+- rate limit no login
+- payload JSON limitado
+- CORS configurável
+- refresh token com revogação
+- usuário admin padrão criado no bootstrap
 
-Endpoints operacionais:
+## 8. Auditoria técnica realizada
 
-- `GET /healthz`: processo ativo.
-- `GET /readyz`: valida config ESL, readiness de persistência e configuração de auth.
-- `GET /metrics`: métricas Prometheus.
+Achados corrigidos nesta rodada:
 
-Logs e métricas:
+1. O Vite só fazia proxy de `/api/esl/*`, enquanto o frontend também chamava `/api/auth/*`.
+2. O frontend redirecionava para `/login`, mas a rota não existia.
+3. O `.env.example` continha valores reais/sensíveis de `ESL_CLIENT_ID`, `ESL_SIGN` e `ESL_STORE_CODE`.
+4. A documentação afirmava corretamente a existência do backend de auth, mas o frontend ainda não fechava o fluxo ponta a ponta.
 
-- Logs estruturados JSON (`pino`).
-- Latência/volume HTTP, erros por categoria, execução de jobs, fila de refresh e dead-letter.
+Correções aplicadas:
 
-## 9. Fluxos operacionais detalhados
+- proxy de `/api/auth/*` adicionado ao `vite.config.ts`
+- tela `/login` implementada no frontend
+- login/logout integrados ao BFF
+- redirecionamento por sessão expirada ajustado para preservar a rota de retorno
+- `.env.example` sanitizado com placeholders seguros
+- comentários técnicos ampliados em módulos centrais do frontend e backend
 
-### 9.1 Sincronização de produto
+## 9. Limitações atuais
 
-1. Produto é enviado para `products/upsert` ou `products/upsert-bulk`.
-2. `productSyncService` mapeia payload e chama vendor (`/product/create` ou `/product/create_multiple`).
-3. Em sucesso, atualiza cache interno e agenda refresh das etiquetas vinculadas.
-4. Auditoria registra comando e resposta.
-
-### 9.2 Bind/unbind
-
-1. BFF recebe bind (`esl_code`, `product_code`, `template_id`).
-2. Chama vendor (`/esl/bind` ou `/esl/bind_multiple`).
-3. Persiste vínculo local em repositório.
-4. Agenda refresh da etiqueta.
-
-Unbind remove vínculo local e agenda refresh.
-
-### 9.3 Trigger de refresh
-
-1. Fila interna em `refreshService` agrega etiquetas pendentes.
-2. Trigger (`/esl/bind_task`) é disparado via rota manual ou job periódico.
-3. Em sucesso, fila é limpa.
-
-### 9.4 Consulta de status
-
-1. `query_count` obtém total online/offline.
-2. `query` paginado alimenta snapshots.
-3. `query_status` consulta lista específica.
-4. `sync` força atualização no vendor.
-
-### 9.5 LED search
-
-- `ledService` chama `/esl/search` para localização física de etiquetas.
-
-## 10. Limitações atuais e próximos passos
-
-Limitações atuais:
-
-- Frontend ainda não possui fluxo nativo de login para consumir JWT quando `BFF_AUTH_ENABLED=true`.
-- JWT é interno (sem IdP/SSO externo nesta fase).
+- A autenticação continua sendo local ao BFF; não há IdP externo ou SSO.
+- A validação implementada confirma apenas a camada vendor/cloud, não o estado físico da base station.
 - Backups locais não são criptografados nesta fase.
+- Não há suíte dedicada de testes frontend.
 
-Próximos passos recomendados:
+## 10. Smoke test de conectividade
 
-1. Integrar autenticação no frontend (login, refresh automático e gerenciamento de sessão).
-2. Publicar pipeline CI com execução completa dos testes do BFF.
-3. Criar dashboard operacional para métricas e dead-letter.
+Escopo adotado:
 
-## 11. Base documental utilizada
+- reachability da API GreenDisplay
+- `query_count`
+- endpoints operacionais do BFF em modo seguro
+- nenhuma operação destrutiva em etiquetas
 
+Resultado observado nesta auditoria:
+
+- `GET https://esl.greendisplay.cn/api/20254235/esl/query_count?...` respondeu `200`
+- payload retornado: `{"online_count":0,"offline_count":0}`
+
+Interpretação:
+
+- há conectividade básica até o fornecedor
+- as credenciais usadas no teste responderam corretamente
+- o resultado não prova operação física da base station nem presença de etiquetas ativas
+- a aplicação deve tratar esse teste como smoke test de infraestrutura, não como homologação de campo
+
+## 11. Como executar
+
+Instalação:
+
+```bash
+npm install
+```
+
+Frontend:
+
+```bash
+npm run dev
+```
+
+BFF:
+
+```bash
+npm run bff
+```
+
+Validação local:
+
+```bash
+curl http://127.0.0.1:8787/healthz
+curl http://127.0.0.1:8787/readyz
+curl http://127.0.0.1:8787/api/esl/health
+```
+
+## 12. Evolução recomendada
+
+1. Adicionar testes frontend para login, expiração de sessão e navegação crítica.
+2. Integrar observabilidade externa para métricas e dead-letter.
+3. Criar procedimento homologado de validação física com base station e etiquetas em loja.
+4. Externalizar autenticação se houver exigência corporativa de SSO.
+
+## 13. Base documental
+
+- `README.md`
+- `docs/MANUAL_EXECUCAO_CLIENTE.md`
+- `docs/DEMO_CHECKLIST.md`
+- `docs/API_ESL_INTEGRACAO_REFERENCIA_PT.md`
 - `ESL manual.pdf`
 - `Base Station WIFI Configuration.pdf`
 - `API Reference_20231118.pdf`

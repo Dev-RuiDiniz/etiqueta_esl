@@ -12,8 +12,13 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        // Proxy local para manter frontend desacoplado de CORS e de host externo.
+        // Proxy local para manter o frontend desacoplado de CORS e consolidar
+        // tanto a API ESL quanto a trilha de autenticação no mesmo alvo BFF.
         '/api/esl': {
+          target: bffTarget,
+          changeOrigin: true
+        },
+        '/api/auth': {
           target: bffTarget,
           changeOrigin: true
         }
