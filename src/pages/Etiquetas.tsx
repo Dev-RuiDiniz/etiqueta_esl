@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import EmptyState from '../components/common/EmptyState';
 import ErrorState from '../components/common/ErrorState';
 import LoadingState from '../components/common/LoadingState';
+import {
+  createEmptyTemplatePayloadForm,
+  productToTemplatePayload,
+  resolveTemplateFieldProfile,
+  templateFieldDefinitions,
+  type TemplatePayloadForm
+} from '../config/templateFields';
 import useAsync from '../hooks/useAsync';
 import {
   bindCatalogItem,
@@ -26,6 +33,63 @@ const emptyCreateForm = {
   display_name: '',
   expected_ap_code: ''
 };
+
+function parseOptionalNumber(value: string) {
+  if (!value.trim()) {
+    return undefined;
+  }
+
+  const normalized = Number(value.replace(',', '.'));
+  return Number.isFinite(normalized) ? normalized : undefined;
+}
+
+function buildDirectProductPayload(product: EslProductListItem, payloadForm: TemplatePayloadForm) {
+  const extendRaw = payloadForm.extend.trim();
+  let extend: Record<string, string | number | boolean> | undefined;
+
+  if (extendRaw) {
+    const parsed = JSON.parse(extendRaw);
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('O campo extend deve ser um JSON de objeto. Ex: {"origem":"ilha"}');
+    }
+
+    extend = parsed as Record<string, string | number | boolean>;
+  }
+
+  return {
+    product_code: payloadForm.product_code.trim() || product.product_code,
+    product_name: payloadForm.product_name.trim() || product.product_name,
+    price: parseOptionalNumber(payloadForm.price) ?? product.price,
+    quantity: parseOptionalNumber(payloadForm.quantity) ?? product.quantity ?? undefined,
+    unit: payloadForm.unit.trim() || undefined,
+    vip_price: parseOptionalNumber(payloadForm.vip_price),
+    origin_price: parseOptionalNumber(payloadForm.origin_price),
+    promotion: payloadForm.promotion.trim() || undefined,
+    spec: payloadForm.spec.trim() || undefined,
+    grade: payloadForm.grade.trim() || undefined,
+    origin: payloadForm.origin.trim() || undefined,
+    manufacturer: payloadForm.manufacturer.trim() || undefined,
+    qrcode: payloadForm.qrcode.trim() || undefined,
+    f1: payloadForm.f1.trim() || undefined,
+    f2: payloadForm.f2.trim() || undefined,
+    f3: payloadForm.f3.trim() || undefined,
+    f4: payloadForm.f4.trim() || undefined,
+    f5: payloadForm.f5.trim() || undefined,
+    f6: payloadForm.f6.trim() || undefined,
+    f7: payloadForm.f7.trim() || undefined,
+    f8: payloadForm.f8.trim() || undefined,
+    f9: payloadForm.f9.trim() || undefined,
+    f10: payloadForm.f10.trim() || undefined,
+    f11: payloadForm.f11.trim() || undefined,
+    f12: payloadForm.f12.trim() || undefined,
+    f13: payloadForm.f13.trim() || undefined,
+    f14: payloadForm.f14.trim() || undefined,
+    f15: payloadForm.f15.trim() || undefined,
+    f16: payloadForm.f16.trim() || undefined,
+    extend
+  };
+}
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) {
@@ -123,6 +187,7 @@ function Etiquetas() {
   const [flash, setFlash] = useState<FlashMessage | null>(null);
   const [activeTagCode, setActiveTagCode] = useState('');
   const [bindForm, setBindForm] = useState<{ product_code: string; template_id: string }>({ product_code: '', template_id: '' });
+  const [templatePayloadForm, setTemplatePayloadForm] = useState<TemplatePayloadForm>(createEmptyTemplatePayloadForm());
   const [rowBusyCode, setRowBusyCode] = useState('');
 
   useEffect(() => {
@@ -147,13 +212,21 @@ function Etiquetas() {
   const activeTags = activeStation?.tags ?? [];
 
   const productByCode = useMemo(() => new Map(products.map((product) => [product.product_code, product])), [products]);
+  const activeTag = useMemo(() => activeTags.find((tag) => tag.esl_code === activeTagCode) ?? null, [activeTagCode, activeTags]);
+  const selectedTemplate = useMemo(
+    () => activeTag?.compatible_templates.find((template) => String(template.id) === bindForm.template_id) ?? null,
+    [activeTag, bindForm.template_id]
+  );
+  const templateProfile = useMemo(() => resolveTemplateFieldProfile(selectedTemplate), [selectedTemplate]);
 
   const openControls = (tag: EslStationTagOverview) => {
     setActiveTagCode(activeTagCode === tag.esl_code ? '' : tag.esl_code);
+    const selectedProduct = productByCode.get(tag.binding?.product_code ?? '');
     setBindForm({
       product_code: tag.binding?.product_code ?? '',
       template_id: tag.binding?.template_id != null ? String(tag.binding.template_id) : ''
     });
+    setTemplatePayloadForm(productToTemplatePayload(selectedProduct));
   };
 
   const reloadAll = async () => {
@@ -244,15 +317,10 @@ function Etiquetas() {
         {
           esl_code: tag.esl_code,
           template_id: bindForm.template_id ? Number(bindForm.template_id) : undefined,
-          product: {
-            product_code: product.product_code,
-            product_name: product.product_name,
-            price: product.price,
-            quantity: product.quantity ?? undefined
-          }
+          product: buildDirectProductPayload(product, templatePayloadForm)
         }
       ]);
-      setFlash({ ok: true, text: `Atualização direta enviada para ${tag.esl_code}.` });
+      setFlash({ ok: true, text: `Template aplicado na etiqueta ${tag.esl_code} com os campos preenchidos.` });
       await reloadOverview();
     } catch (err) {
       setFlash({ ok: false, text: err instanceof Error ? err.message : 'Falha ao enviar atualização direta.' });
@@ -606,7 +674,11 @@ function Etiquetas() {
                                         <select
                                           className="form-select"
                                           value={bindForm.product_code}
-                                          onChange={(event) => setBindForm((current) => ({ ...current, product_code: event.target.value }))}
+                                          onChange={(event) => {
+                                            const selectedCode = event.target.value;
+                                            setBindForm((current) => ({ ...current, product_code: selectedCode }));
+                                            setTemplatePayloadForm(productToTemplatePayload(productByCode.get(selectedCode)));
+                                          }}
                                         >
                                           <option value="">Selecione um produto</option>
                                           {products.map((product) => (
@@ -642,6 +714,65 @@ function Etiquetas() {
                                       </div>
                                     ) : null}
 
+                                    {bindForm.template_id ? (
+                                      <div className="mt-3 border rounded p-3 bg-white">
+                                        <div className="d-flex justify-content-between align-items-start gap-3 mb-2">
+                                          <div>
+                                            <div className="fw-semibold">{templateProfile.title}</div>
+                                            <div className="small text-muted">
+                                              {templateProfile.description}
+                                            </div>
+                                          </div>
+                                          <span className="badge bg-light text-dark border">
+                                            Template {bindForm.template_id}
+                                          </span>
+                                        </div>
+
+                                        <div className="row g-2">
+                                          {templateFieldDefinitions
+                                            .filter((field) => templateProfile.fields.includes(field.key))
+                                            .map((field) => (
+                                            <div key={field.key} className="col-12 col-md-6 col-xl-4">
+                                              <label className="form-label small">{templateProfile.fieldLabels?.[field.key] ?? field.label}</label>
+                                              <input
+                                                className="form-control form-control-sm"
+                                                inputMode={field.type === 'number' ? 'decimal' : undefined}
+                                                value={templatePayloadForm[field.key]}
+                                                onChange={(event) =>
+                                                  setTemplatePayloadForm((current) => ({
+                                                    ...current,
+                                                    [field.key]: event.target.value
+                                                  }))
+                                                }
+                                                placeholder={field.placeholder}
+                                              />
+                                            </div>
+                                          ))}
+                                          {templateProfile.allowExtend ? (
+                                            <div className="col-12">
+                                              <label className="form-label small">Extend (JSON opcional)</label>
+                                              <textarea
+                                                className="form-control form-control-sm"
+                                                rows={3}
+                                                value={templatePayloadForm.extend}
+                                                onChange={(event) =>
+                                                  setTemplatePayloadForm((current) => ({
+                                                    ...current,
+                                                    extend: event.target.value
+                                                  }))
+                                                }
+                                                placeholder='Ex: {"origem":"ilha","campanha":"Páscoa"}'
+                                              />
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="small text-muted mt-3">
+                                        Selecione um template para visualizar e preencher os campos que serão enviados na atualização direta.
+                                      </div>
+                                    )}
+
                                     <div className="d-flex flex-wrap gap-2 mt-3">
                                       <button
                                         type="button"
@@ -655,9 +786,9 @@ function Etiquetas() {
                                         type="button"
                                         className="btn btn-outline-primary btn-sm"
                                         onClick={() => void handleDirectUpdate(tag)}
-                                        disabled={rowBusyCode === tag.esl_code || tag.registration_status === 'PENDING_DISCOVERY'}
+                                        disabled={rowBusyCode === tag.esl_code || tag.registration_status === 'PENDING_DISCOVERY' || !bindForm.template_id}
                                       >
-                                        Enviar direto
+                                        Aplicar template
                                       </button>
                                     </div>
                                   </div>
