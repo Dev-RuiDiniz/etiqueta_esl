@@ -95,6 +95,10 @@ export async function eslRequest<TData>(path: string, init?: RequestInit): Promi
       throw new Error('Sem permissão para executar esta operação.');
     }
 
+    if (response.status === 409) {
+      throw new Error(parsed?.error_msg ?? 'A operação entrou em conflito com o estado atual dos dados.');
+    }
+
     if (response.status === 413) {
       throw new Error('Arquivo ou dados muito grandes. Reduza o tamanho e tente novamente.');
     }
@@ -149,5 +153,11 @@ export async function eslPatch<TData, TBody>(path: string, body: TBody): Promise
   return eslRequest<TData>(path, {
     method: 'PATCH',
     body: JSON.stringify(body)
+  });
+}
+
+export async function eslDelete<TData>(path: string): Promise<EslCommandResult<TData>> {
+  return eslRequest<TData>(path, {
+    method: 'DELETE'
   });
 }

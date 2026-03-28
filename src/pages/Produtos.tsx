@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import EmptyState from '../components/common/EmptyState';
 import ErrorState from '../components/common/ErrorState';
 import LoadingState from '../components/common/LoadingState';
 import useAsync from '../hooks/useAsync';
-import { eslGet, eslPost } from '../services/esl/apiClient';
+import { eslDelete, eslGet, eslPost } from '../services/esl/apiClient';
+import type { EslProductUpsertInput } from '../types/esl';
 import { formatCurrencyBRL } from '../utils/format';
 
 type Product = {
+  product_inner_code?: string | null;
   product_code: string;
   product_name: string;
+  spec?: string | null;
+  grade?: string | null;
+  unit?: string | null;
   price: number;
+  vip_price?: number | null;
+  origin_price?: number | null;
+  origin?: string | null;
+  manufacturer?: string | null;
   quantity: number | null;
   last_synced_at: string;
   sync_status: string;
@@ -29,6 +38,69 @@ type ProductsResponse = {
   size: number;
 };
 
+type UpsertForm = {
+  product_inner_code: string;
+  product_code: string;
+  product_name: string;
+  spec: string;
+  grade: string;
+  unit: string;
+  price: string;
+  vip_price: string;
+  origin_price: string;
+  origin: string;
+  manufacturer: string;
+};
+
+const emptyForm: UpsertForm = {
+  product_inner_code: '',
+  product_code: '',
+  product_name: '',
+  spec: '',
+  grade: '',
+  unit: '',
+  price: '',
+  vip_price: '',
+  origin_price: '',
+  origin: '',
+  manufacturer: ''
+};
+
+function parseOptionalNumber(value: string) {
+  const normalized = value.trim().replace(',', '.');
+  if (!normalized) {
+    return undefined;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+function isValidNumber(value: number | undefined): value is number {
+  return Number.isFinite(value);
+}
+
+function toForm(product: Product): UpsertForm {
+  return {
+    product_inner_code: product.product_inner_code ?? '',
+    product_code: product.product_code ?? '',
+    product_name: product.product_name ?? '',
+    spec: product.spec ?? '',
+    grade: product.grade ?? '',
+    unit: product.unit ?? '',
+    price: product.price != null ? String(product.price) : '',
+    vip_price: product.vip_price != null ? String(product.vip_price) : '',
+    origin_price: product.origin_price != null ? String(product.origin_price) : '',
+    origin: product.origin ?? '',
+    manufacturer: product.manufacturer ?? ''
+  };
+}
+
+function textOrDash(value: string | null | undefined) {
+  const normalized = String(value ?? '').trim();
+  return normalized || '—';
+}
+
 async function fetchProducts(page: number, size: number) {
   const result = await eslGet<ProductsResponse>(`/products?page=${page}&size=${size}`);
   return result.data as ProductsResponse;
@@ -38,9 +110,6 @@ async function fetchBindingsByProduct(productCode: string) {
   const result = await eslGet<Binding[]>(`/bindings?product_code=${encodeURIComponent(productCode)}`);
   return Array.isArray(result.data) ? result.data : [];
 }
-
-type UpsertForm = { product_code: string; product_name: string; price: string };
-const emptyForm: UpsertForm = { product_code: '', product_name: '', price: '' };
 
 function Produtos() {
   const [page, setPage] = useState(1);
@@ -58,40 +127,106 @@ function Produtos() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const [form, setForm] = useState<UpsertForm>(emptyForm);
+  const [editingCode, setEditingCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingCode, setDeletingCode] = useState<string | null>(null);
   const [submitMsg, setSubmitMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
   const [bindings, setBindings] = useState<Binding[]>([]);
   const [loadingBindings, setLoadingBindings] = useState(false);
 
+  const handleChange = (field: keyof UpsertForm, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setEditingCode(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const price = Number(form.price.replace(',', '.'));
-    if (!form.product_code.trim() || !form.product_name.trim() || !Number.isFinite(price) || price <= 0) {
-      setSubmitMsg({ ok: false, text: 'Preencha todos os campos corretamente.' });
+
+    const price = parseOptionalNumber(form.price);
+    const vipPrice = parseOptionalNumber(form.vip_price);
+    const originPrice = parseOptionalNumber(form.origin_price);
+
+    if (!form.product_code.trim() || !form.product_name.trim() || !isValidNumber(price) || price <= 0) {
+      setSubmitMsg({ ok: false, text: 'Preencha corretamente os campos obrigatórios Barcode, Product name e Price.' });
+      return;
+    }
+
+    if ((form.vip_price.trim() && !isValidNumber(vipPrice)) || (form.origin_price.trim() && !isValidNumber(originPrice))) {
+      setSubmitMsg({ ok: false, text: 'Confira os campos numéricos opcionais antes de salvar.' });
       return;
     }
 
     setSubmitting(true);
     setSubmitMsg(null);
+
     try {
-      const result = await eslPost<unknown, object>('/products/upsert', {
+      const payload: EslProductUpsertInput = {
+        product_inner_code: form.product_inner_code.trim() || undefined,
         product_code: form.product_code.trim(),
         product_name: form.product_name.trim(),
-        price
-      });
-      if (result.success) {
-        setSubmitMsg({ ok: true, text: 'Produto enviado com sucesso.' });
-        setForm(emptyForm);
-        await reload();
-      } else {
-        setSubmitMsg({ ok: false, text: result.error_msg || 'Erro ao enviar produto.' });
+        spec: form.spec.trim() || undefined,
+        grade: form.grade.trim() || undefined,
+        unit: form.unit.trim() || undefined,
+        price,
+        vip_price: form.vip_price.trim() ? vipPrice : undefined,
+        origin_price: form.origin_price.trim() ? originPrice : undefined,
+        origin: form.origin.trim() || undefined,
+        manufacturer: form.manufacturer.trim() || undefined
+      };
+
+      const result = await eslPost<unknown, EslProductUpsertInput>('/products/upsert', payload);
+      if (!result.success) {
+        setSubmitMsg({ ok: false, text: result.error_msg || 'Erro ao salvar produto.' });
+        return;
       }
-    } catch {
-      setSubmitMsg({ ok: false, text: 'Erro de comunicação com o servidor.' });
+
+      setSubmitMsg({ ok: true, text: editingCode ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.' });
+      resetForm();
+      await reload();
+    } catch (err) {
+      setSubmitMsg({ ok: false, text: err instanceof Error ? err.message : 'Erro de comunicação com o servidor.' });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (product: Product) => {
+    setForm(toForm(product));
+    setEditingCode(product.product_code);
+    setSubmitMsg(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (product: Product) => {
+    const confirmed = window.confirm(`Apagar o produto ${product.product_name} (${product.product_code}) do catálogo?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingCode(product.product_code);
+    setSubmitMsg(null);
+
+    try {
+      await eslDelete(`/products/${encodeURIComponent(product.product_code)}`);
+      if (expandedCode === product.product_code) {
+        setExpandedCode(null);
+        setBindings([]);
+      }
+      if (editingCode === product.product_code) {
+        resetForm();
+      }
+      setSubmitMsg({ ok: true, text: 'Produto apagado com sucesso.' });
+      await reload();
+    } catch (err) {
+      setSubmitMsg({ ok: false, text: err instanceof Error ? err.message : 'Não foi possível apagar o produto.' });
+    } finally {
+      setDeletingCode(null);
     }
   };
 
@@ -101,6 +236,7 @@ function Produtos() {
       setBindings([]);
       return;
     }
+
     setExpandedCode(code);
     setLoadingBindings(true);
     try {
@@ -115,56 +251,149 @@ function Produtos() {
     <div className="container-fluid px-0">
       <header className="mb-4">
         <h1 className="h3 mb-1">Produtos</h1>
-        <p className="text-muted mb-0">Catálogo de produtos sincronizados com as etiquetas eletrônicas.</p>
+        <p className="text-muted mb-0">Catálogo com os campos do produto organizados conforme o payload da API ESL.</p>
       </header>
 
-      {/* Formulário de upsert individual */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
-          <h2 className="h5 mb-3">Cadastrar / atualizar produto</h2>
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 className="h5 mb-0">{editingCode ? 'Atualizar produto' : 'Cadastrar produto'}</h2>
+            {editingCode ? (
+              <button type="button" className="btn btn-outline-secondary btn-sm" onClick={resetForm}>
+                Cancelar edição
+              </button>
+            ) : null}
+          </div>
+
           <form onSubmit={(e) => void handleSubmit(e)}>
             <div className="row g-3">
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-code" className="form-label">Código do produto</label>
+                <label htmlFor="prod-inner-code" className="form-label">Internal code (#pi)</label>
+                <input
+                  id="prod-inner-code"
+                  className="form-control"
+                  value={form.product_inner_code}
+                  onChange={(e) => handleChange('product_inner_code', e.target.value)}
+                  placeholder="Input Internal code (#pi)"
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <label htmlFor="prod-code" className="form-label">Barcode (#pc)</label>
                 <input
                   id="prod-code"
                   className="form-control"
                   value={form.product_code}
-                  onChange={(e) => setForm((f) => ({ ...f, product_code: e.target.value }))}
-                  placeholder="Ex: SKU-001"
+                  onChange={(e) => handleChange('product_code', e.target.value)}
+                  placeholder="7894900011517"
                   required
                 />
               </div>
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-name" className="form-label">Nome do produto</label>
+                <label htmlFor="prod-name" className="form-label">Product name (#pn)</label>
                 <input
                   id="prod-name"
                   className="form-control"
                   value={form.product_name}
-                  onChange={(e) => setForm((f) => ({ ...f, product_name: e.target.value }))}
-                  placeholder="Ex: Arroz Integral 1kg"
+                  onChange={(e) => handleChange('product_name', e.target.value)}
+                  placeholder="Arroz Tipo 1 5kg"
                   required
                 />
               </div>
-              <div className="col-12 col-md-2">
-                <label htmlFor="prod-price" className="form-label">Preço (R$)</label>
+              <div className="col-12 col-md-4">
+                <label htmlFor="prod-spec" className="form-label">Specification (#ps)</label>
+                <input
+                  id="prod-spec"
+                  className="form-control"
+                  value={form.spec}
+                  onChange={(e) => handleChange('spec', e.target.value)}
+                  placeholder="Pacote 5kg"
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <label htmlFor="prod-grade" className="form-label">Grade (#pg)</label>
+                <input
+                  id="prod-grade"
+                  className="form-control"
+                  value={form.grade}
+                  onChange={(e) => handleChange('grade', e.target.value)}
+                  placeholder="Input Grade (#pg)"
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <label htmlFor="prod-unit" className="form-label">Unit (#pu)</label>
+                <input
+                  id="prod-unit"
+                  className="form-control"
+                  value={form.unit}
+                  onChange={(e) => handleChange('unit', e.target.value)}
+                  placeholder="un"
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <label htmlFor="prod-price" className="form-label">Price (#pp)</label>
                 <input
                   id="prod-price"
                   className="form-control"
                   value={form.price}
-                  onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                  placeholder="Ex: 12,90"
+                  onChange={(e) => handleChange('price', e.target.value)}
+                  placeholder="27.49"
                   required
                 />
               </div>
-              <div className="col-12 col-md-2 d-grid align-items-end">
+              <div className="col-12 col-md-4">
+                <label htmlFor="prod-vip-price" className="form-label">Discount Price (#vp)</label>
+                <input
+                  id="prod-vip-price"
+                  className="form-control"
+                  value={form.vip_price}
+                  onChange={(e) => handleChange('vip_price', e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <label htmlFor="prod-origin-price" className="form-label">Original Price (#pop)</label>
+                <input
+                  id="prod-origin-price"
+                  className="form-control"
+                  value={form.origin_price}
+                  onChange={(e) => handleChange('origin_price', e.target.value)}
+                  placeholder="31.99"
+                />
+              </div>
+              <div className="col-12 col-md-6">
+                <label htmlFor="prod-origin" className="form-label">Origin (#po)</label>
+                <input
+                  id="prod-origin"
+                  className="form-control"
+                  value={form.origin}
+                  onChange={(e) => handleChange('origin', e.target.value)}
+                  placeholder="Brasil"
+                />
+              </div>
+              <div className="col-12 col-md-6">
+                <label htmlFor="prod-manufacturer" className="form-label">MFRS (#pm)</label>
+                <input
+                  id="prod-manufacturer"
+                  className="form-control"
+                  value={form.manufacturer}
+                  onChange={(e) => handleChange('manufacturer', e.target.value)}
+                  placeholder="Graos do Sul"
+                />
+              </div>
+              <div className="col-12 d-flex flex-wrap gap-2">
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? (
-                    <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />Enviando...</>
-                  ) : 'Enviar'}
+                    <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />Salvando...</>
+                  ) : editingCode ? 'Atualizar produto' : 'Cadastrar produto'}
                 </button>
+                {editingCode ? (
+                  <button type="button" className="btn btn-outline-secondary" onClick={resetForm}>
+                    Limpar formulário
+                  </button>
+                ) : null}
               </div>
             </div>
+
             {submitMsg ? (
               <div className={`alert mt-3 mb-0 ${submitMsg.ok ? 'alert-success' : 'alert-danger'}`} role="alert">
                 {submitMsg.text}
@@ -174,7 +403,6 @@ function Produtos() {
         </div>
       </div>
 
-      {/* Tabela de produtos */}
       <div className="card border-0 shadow-sm">
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3">
@@ -203,59 +431,93 @@ function Produtos() {
                 <table className="table table-hover align-middle">
                   <thead className="table-light">
                     <tr>
-                      <th>Código</th>
-                      <th>Nome</th>
-                      <th>Preço</th>
+                      <th>Internal code (#pi)</th>
+                      <th>Barcode (#pc)</th>
+                      <th>Product name (#pn)</th>
+                      <th>Specification (#ps)</th>
+                      <th>Grade (#pg)</th>
+                      <th>Unit (#pu)</th>
+                      <th>Price (#pp)</th>
+                      <th>Discount (#vp)</th>
+                      <th>Original (#pop)</th>
+                      <th>Origin (#po)</th>
+                      <th>MFRS (#pm)</th>
                       <th>Qtd.</th>
                       <th>Status</th>
                       <th>Última sinc.</th>
-                      <th>Etiquetas</th>
+                      <th>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((p) => (
-                      <>
-                        <tr key={p.product_code}>
-                          <td><code>{p.product_code}</code></td>
-                          <td>{p.product_name}</td>
-                          <td>{formatCurrencyBRL(p.price)}</td>
-                          <td>{p.quantity ?? '—'}</td>
+                    {products.map((product) => (
+                      <Fragment key={product.product_code}>
+                        <tr>
+                          <td>{textOrDash(product.product_inner_code)}</td>
+                          <td><code>{product.product_code}</code></td>
+                          <td>{product.product_name}</td>
+                          <td>{textOrDash(product.spec)}</td>
+                          <td>{textOrDash(product.grade)}</td>
+                          <td>{textOrDash(product.unit)}</td>
+                          <td>{formatCurrencyBRL(product.price)}</td>
+                          <td>{product.vip_price != null ? formatCurrencyBRL(product.vip_price) : '—'}</td>
+                          <td>{product.origin_price != null ? formatCurrencyBRL(product.origin_price) : '—'}</td>
+                          <td>{textOrDash(product.origin)}</td>
+                          <td>{textOrDash(product.manufacturer)}</td>
+                          <td>{product.quantity ?? '—'}</td>
                           <td>
-                            <span className={`badge ${p.sync_status === 'SYNCED' ? 'bg-success' : 'bg-warning text-dark'}`}>
-                              {p.sync_status}
+                            <span className={`badge ${product.sync_status === 'SYNCED' ? 'bg-success' : 'bg-warning text-dark'}`}>
+                              {product.sync_status}
                             </span>
                           </td>
                           <td>
                             <small className="text-muted">
-                              {new Date(p.last_synced_at).toLocaleString('pt-BR')}
+                              {new Date(product.last_synced_at).toLocaleString('pt-BR')}
                             </small>
                           </td>
                           <td>
-                            <button
-                              className="btn btn-link btn-sm p-0"
-                              onClick={() => void toggleBindings(p.product_code)}
-                            >
-                              {expandedCode === p.product_code ? 'Ocultar' : 'Ver vínculos'}
-                            </button>
+                            <div className="d-flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={() => handleEdit(product)}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline-danger btn-sm"
+                                onClick={() => void handleDelete(product)}
+                                disabled={deletingCode === product.product_code}
+                              >
+                                {deletingCode === product.product_code ? 'Apagando...' : 'Apagar'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-link btn-sm p-0 align-self-center"
+                                onClick={() => void toggleBindings(product.product_code)}
+                              >
+                                {expandedCode === product.product_code ? 'Ocultar vínculos' : 'Ver vínculos'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
-                        {expandedCode === p.product_code ? (
-                          <tr key={`${p.product_code}-bindings`}>
-                            <td colSpan={7} className="bg-light">
+                        {expandedCode === product.product_code ? (
+                          <tr>
+                            <td colSpan={15} className="bg-light">
                               {loadingBindings ? (
                                 <span className="text-muted small">Carregando vínculos...</span>
                               ) : bindings.length === 0 ? (
                                 <span className="text-muted small">Nenhuma etiqueta vinculada.</span>
                               ) : (
                                 <ul className="mb-0 list-unstyled small">
-                                  {bindings.map((b) => (
-                                    <li key={b.esl_code}>
-                                      <code>{b.esl_code}</code>
-                                      <span className={`ms-2 badge ${b.binding_status === 'BOUND' ? 'bg-success' : 'bg-secondary'}`}>
-                                        {b.binding_status}
+                                  {bindings.map((binding) => (
+                                    <li key={binding.esl_code}>
+                                      <code>{binding.esl_code}</code>
+                                      <span className={`ms-2 badge ${binding.binding_status === 'BOUND' ? 'bg-success' : 'bg-secondary'}`}>
+                                        {binding.binding_status}
                                       </span>
                                       <span className="ms-2 text-muted">
-                                        desde {new Date(b.bound_at).toLocaleDateString('pt-BR')}
+                                        desde {new Date(binding.bound_at).toLocaleDateString('pt-BR')}
                                       </span>
                                     </li>
                                   ))}
@@ -264,18 +526,17 @@ function Produtos() {
                             </td>
                           </tr>
                         ) : null}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Paginação */}
               {totalPages > 1 ? (
                 <nav aria-label="Navegação de páginas de produtos">
                   <ul className="pagination justify-content-center mb-0">
                     <li className={`page-item ${page <= 1 ? 'disabled' : ''}`}>
-                      <button className="page-link" onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                      <button className="page-link" onClick={() => setPage((current) => Math.max(1, current - 1))}>
                         Anterior
                       </button>
                     </li>
@@ -285,7 +546,7 @@ function Produtos() {
                       </span>
                     </li>
                     <li className={`page-item ${page >= totalPages ? 'disabled' : ''}`}>
-                      <button className="page-link" onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                      <button className="page-link" onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>
                         Próxima
                       </button>
                     </li>

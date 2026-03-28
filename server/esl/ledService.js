@@ -1,5 +1,6 @@
 import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorSearchPayload } from './eslMapper.js';
+import { postWithPayloadVariants } from './payloadFallback.js';
 
 export class EslLedService {
   constructor({ config, apiClient, auditLogService, deadLetterRepo }) {
@@ -10,18 +11,20 @@ export class EslLedService {
   }
 
   async search(eslCodes) {
-    const payload = toVendorSearchPayload(eslCodes);
-
-    const result = await runWithRetry(
-      () => this.apiClient.post('/esl/search', payload),
-      {
+    const { result, payload } = await postWithPayloadVariants({
+      apiClient: this.apiClient,
+      path: '/esl/search',
+      payloadVariants: [
+        { name: 'json-string', payload: toVendorSearchPayload(eslCodes, true) },
+        { name: 'raw-array', payload: toVendorSearchPayload(eslCodes, false) }
+      ],
+      context: {
         operation: 'esl.search',
-        payload,
         meta: { count: eslCodes.length }
       },
-      this.config,
-      { deadLetterRepo: this.deadLetterRepo }
-    );
+      config: this.config,
+      deadLetterRepo: this.deadLetterRepo
+    });
 
     await this.auditLogService.record({
       operation: 'esl.search',

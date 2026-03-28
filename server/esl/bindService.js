@@ -1,5 +1,6 @@
 import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorBindMultiplePayload, toVendorBindPayload } from './eslMapper.js';
+import { postWithPayloadVariants } from './payloadFallback.js';
 
 export class EslBindingService {
   constructor({ config, apiClient, refreshService, auditLogService, bindingRepo, deadLetterRepo, metrics, eslCatalogRepo }) {
@@ -74,18 +75,20 @@ export class EslBindingService {
   async bindMany(bindings) {
     // O fluxo em lote compartilha a mesma semântica do bind unitário,
     // mas preserva auditoria e reconciliação por item após sucesso.
-    const payload = toVendorBindMultiplePayload(bindings);
-
-    const result = await runWithRetry(
-      () => this.apiClient.post('/esl/bind_multiple', payload),
-      {
+    const { result, payload } = await postWithPayloadVariants({
+      apiClient: this.apiClient,
+      path: '/esl/bind_multiple',
+      payloadVariants: [
+        { name: 'raw-array', payload: toVendorBindMultiplePayload(bindings, false) },
+        { name: 'json-string', payload: toVendorBindMultiplePayload(bindings, true) }
+      ],
+      context: {
         operation: 'esl.bind_multiple',
-        payload,
         meta: { count: bindings.length }
       },
-      this.config,
-      { deadLetterRepo: this.deadLetterRepo }
-    );
+      config: this.config,
+      deadLetterRepo: this.deadLetterRepo
+    });
 
     await this.auditLogService.record({
       operation: 'esl.bind_multiple',

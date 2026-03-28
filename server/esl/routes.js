@@ -294,6 +294,15 @@ export function createEslRoutes({
       return true;
     }
 
+    const deleteProductMatch = pathname.match(/^\/api\/esl\/products\/([^/]+)$/);
+    if (req.method === 'DELETE' && deleteProductMatch) {
+      const productCode = decodeURIComponent(deleteProductMatch[1]);
+      const result = await productSyncService.deleteProduct(productCode);
+      const statusCode = result.success ? 200 : result.error_code === 404 ? 404 : result.error_code === 409 ? 409 : 400;
+      sendJson(res, statusCode, buildCommandResult(result));
+      return true;
+    }
+
     if (req.method === 'POST' && pathname === '/api/esl/products/upsert-bulk') {
       if (!Array.isArray(body.items) || body.items.length === 0) {
         sendJson(res, 422, { success: false, error_code: 422, error_msg: "O campo 'items' deve ser um array não vazio.", request_id: 'VAL', received_at: new Date().toISOString(), data: { field: 'items' } });

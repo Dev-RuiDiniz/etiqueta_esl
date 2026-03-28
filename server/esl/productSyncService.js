@@ -146,7 +146,7 @@ export class EslProductSyncService {
     const vendorProducts = toVendorProductsArray(products);
 
     const result = await runWithRetry(
-      () => this.apiClient.post('/product/create_multiple', { f1: JSON.stringify(vendorProducts) }),
+      () => this.apiClient.post('/product/create_multiple', { f1: vendorProducts }),
       {
         operation: 'product.create_multiple',
         payload: vendorProducts,
@@ -207,5 +207,52 @@ export class EslProductSyncService {
 
   async countProducts() {
     return this.productRepo.countProducts();
+  }
+
+  async deleteProduct(productCode) {
+    const existing = await this.productRepo.getProduct(productCode);
+    if (!existing) {
+      return {
+        success: false,
+        error_code: 404,
+        error_msg: 'Produto não encontrado.',
+        request_id: `PROD-DELETE-${Date.now()}`,
+        received_at: new Date().toISOString(),
+        data: null
+      };
+    }
+
+    const bindings = await this.bindingRepo.listBindingsByProductCode(productCode);
+    if (bindings.length > 0) {
+      return {
+        success: false,
+        error_code: 409,
+        error_msg: 'Desvincule as etiquetas deste produto antes de apagar.',
+        request_id: `PROD-DELETE-${Date.now()}`,
+        received_at: new Date().toISOString(),
+        data: { bindings_count: bindings.length }
+      };
+    }
+
+    await this.productRepo.deleteProduct(productCode);
+
+    await this.auditLogService.record({
+      operation: 'product.delete',
+      payload: { product_code: productCode },
+      request_id: `PROD-DELETE-${Date.now()}`,
+      success: true,
+      error_code: 0,
+      error_msg: '',
+      response: { product_code: productCode }
+    });
+
+    return {
+      success: true,
+      error_code: 0,
+      error_msg: '',
+      request_id: `PROD-DELETE-${Date.now()}`,
+      received_at: new Date().toISOString(),
+      data: { product_code: productCode }
+    };
   }
 }

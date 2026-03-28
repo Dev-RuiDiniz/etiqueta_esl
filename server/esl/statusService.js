@@ -1,5 +1,6 @@
 import { runWithRetry } from './eslRetryPolicy.js';
 import { fromVendorStatusRecord, toVendorQueryStatusPayload } from './eslMapper.js';
+import { postWithPayloadVariants } from './payloadFallback.js';
 
 function extractArrayFromResult(result) {
   if (Array.isArray(result.data)) {
@@ -151,18 +152,20 @@ export class EslStatusService {
   }
 
   async querySpecificStatus({ esl_codes = [], page = 1, size = 100 } = {}) {
-    const payload = toVendorQueryStatusPayload({ esl_codes, page, size });
-
-    const result = await runWithRetry(
-      () => this.apiClient.post('/esl/query_status', payload),
-      {
+    const { result, payload } = await postWithPayloadVariants({
+      apiClient: this.apiClient,
+      path: '/esl/query_status',
+      payloadVariants: [
+        { name: 'raw-array', payload: toVendorQueryStatusPayload({ esl_codes, page, size }, false) },
+        { name: 'json-string', payload: toVendorQueryStatusPayload({ esl_codes, page, size }, true) }
+      ],
+      context: {
         operation: 'esl.query_status',
-        payload,
         meta: { count: esl_codes.length }
       },
-      this.config,
-      { deadLetterRepo: this.deadLetterRepo }
-    );
+      config: this.config,
+      deadLetterRepo: this.deadLetterRepo
+    });
 
     // Consulta direcionada usada por validações pós-atualização, troubleshooting
     // e telas que precisam checar um subconjunto específico de etiquetas.

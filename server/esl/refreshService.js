@@ -1,5 +1,6 @@
 import { recordLogicalVendorFailure, runWithRetry } from './eslRetryPolicy.js';
 import { toVendorDirectPayload } from './eslMapper.js';
+import { postWithPayloadVariants } from './payloadFallback.js';
 
 export class EslRefreshService {
   constructor({ config, apiClient, auditLogService, deadLetterRepo, metrics }) {
@@ -108,18 +109,20 @@ export class EslRefreshService {
   async directUpdate(items) {
     // Fluxo de urgência: envia conteúdo/template diretamente para as etiquetas,
     // sem depender da fila consolidada de bind/unbind.
-    const payload = toVendorDirectPayload(items);
-
-    const result = await runWithRetry(
-      () => this.apiClient.post('/esl/direct', payload),
-      {
+    const { result, payload } = await postWithPayloadVariants({
+      apiClient: this.apiClient,
+      path: '/esl/direct',
+      payloadVariants: [
+        { name: 'raw-array', payload: toVendorDirectPayload(items, false) },
+        { name: 'json-string', payload: toVendorDirectPayload(items, true) }
+      ],
+      context: {
         operation: 'esl.direct',
-        payload,
         meta: { count: items.length }
       },
-      this.config,
-      { deadLetterRepo: this.deadLetterRepo }
-    );
+      config: this.config,
+      deadLetterRepo: this.deadLetterRepo
+    });
 
     await this.auditLogService.record({
       operation: 'esl.direct',

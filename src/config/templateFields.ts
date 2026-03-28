@@ -41,6 +41,7 @@ export type TemplateFieldProfile = {
   fields: TemplateFieldKey[];
   allowExtend?: boolean;
   fieldLabels?: Partial<Record<TemplateFieldKey, string>>;
+  extendBindings?: Partial<Record<TemplateFieldKey, string[]>>;
 };
 
 const templateFieldProfilesById: Record<number, TemplateFieldProfile> = {
@@ -52,6 +53,11 @@ const templateFieldProfilesById: Record<number, TemplateFieldProfile> = {
       product_name: 'Produto',
       price: 'Valor',
       product_code: 'Codigo de barras'
+    },
+    extendBindings: {
+      product_name: ['Produto'],
+      price: ['Valor'],
+      product_code: ['Cod.Barras', 'Codigo de barras']
     }
   }
 };

@@ -151,6 +151,24 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   db.pragma('busy_timeout = 5000');
   db.exec(SQLITE_SCHEMA_SQL);
 
+  const productColumns = db.prepare('PRAGMA table_info(products)').all();
+  const productColumnNames = new Set(productColumns.map((column) => String(column.name)));
+  if (!productColumnNames.has('product_inner_code')) {
+    db.exec('ALTER TABLE products ADD COLUMN product_inner_code TEXT NULL;');
+  }
+  if (!productColumnNames.has('spec')) {
+    db.exec('ALTER TABLE products ADD COLUMN spec TEXT NULL;');
+  }
+  if (!productColumnNames.has('grade')) {
+    db.exec('ALTER TABLE products ADD COLUMN grade TEXT NULL;');
+  }
+  if (!productColumnNames.has('origin')) {
+    db.exec('ALTER TABLE products ADD COLUMN origin TEXT NULL;');
+  }
+  if (!productColumnNames.has('manufacturer')) {
+    db.exec('ALTER TABLE products ADD COLUMN manufacturer TEXT NULL;');
+  }
+
   const catalogColumns = db.prepare('PRAGMA table_info(esl_catalog)').all();
   const catalogColumnNames = new Set(catalogColumns.map((column) => String(column.name)));
   if (!catalogColumnNames.has('expected_ap_code')) {
@@ -382,16 +400,53 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   const countDeadLettersStmt = db.prepare('SELECT COUNT(*) AS count FROM dead_letters');
 
   const upsertProductStmt = db.prepare(`
-    INSERT INTO products (product_code, product_name, price, quantity, unit, vip_price, origin_price, promotion, last_synced_at, sync_status)
-    VALUES (@product_code, @product_name, @price, @quantity, @unit, @vip_price, @origin_price, @promotion, @last_synced_at, @sync_status)
+    INSERT INTO products (
+      product_inner_code,
+      product_code,
+      product_name,
+      spec,
+      grade,
+      price,
+      quantity,
+      unit,
+      vip_price,
+      origin_price,
+      origin,
+      manufacturer,
+      promotion,
+      last_synced_at,
+      sync_status
+    )
+    VALUES (
+      @product_inner_code,
+      @product_code,
+      @product_name,
+      @spec,
+      @grade,
+      @price,
+      @quantity,
+      @unit,
+      @vip_price,
+      @origin_price,
+      @origin,
+      @manufacturer,
+      @promotion,
+      @last_synced_at,
+      @sync_status
+    )
     ON CONFLICT (product_code)
     DO UPDATE SET
+      product_inner_code = excluded.product_inner_code,
       product_name = excluded.product_name,
+      spec = excluded.spec,
+      grade = excluded.grade,
       price = excluded.price,
       quantity = excluded.quantity,
       unit = excluded.unit,
       vip_price = excluded.vip_price,
       origin_price = excluded.origin_price,
+      origin = excluded.origin,
+      manufacturer = excluded.manufacturer,
       promotion = excluded.promotion,
       last_synced_at = excluded.last_synced_at,
       sync_status = excluded.sync_status;
@@ -399,6 +454,7 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   const getProductStmt = db.prepare('SELECT * FROM products WHERE product_code = ?');
   const listProductsStmt = db.prepare('SELECT * FROM products ORDER BY last_synced_at DESC LIMIT ? OFFSET ?');
   const countProductsStmt = db.prepare('SELECT COUNT(*) AS count FROM products');
+  const deleteProductStmt = db.prepare('DELETE FROM products WHERE product_code = ?');
 
   const insertUserStmt = db.prepare(
     'INSERT INTO users (id, email, password_hash, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
@@ -780,13 +836,18 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   const productRepo = {
     async upsertProduct(product) {
       upsertProductStmt.run({
+        product_inner_code: product.product_inner_code ?? null,
         product_code: String(product.product_code),
         product_name: String(product.product_name ?? ''),
+        spec: product.spec ?? null,
+        grade: product.grade ?? null,
         price: Number(product.price ?? 0),
         quantity: product.quantity != null ? toSafeInteger(product.quantity, 0) : null,
         unit: product.unit ?? null,
         vip_price: product.vip_price != null ? Number(product.vip_price) : null,
         origin_price: product.origin_price != null ? Number(product.origin_price) : null,
+        origin: product.origin ?? null,
+        manufacturer: product.manufacturer ?? null,
         promotion: product.promotion ?? null,
         last_synced_at: nowIso(),
         sync_status: product.sync_status ?? 'SYNCED'
@@ -805,6 +866,16 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
     async countProducts() {
       const row = countProductsStmt.get();
       return toSafeInteger(row?.count, 0);
+    },
+
+    async deleteProduct(productCode) {
+      const existing = getProductStmt.get(String(productCode));
+      if (!existing) {
+        return null;
+      }
+
+      deleteProductStmt.run(String(productCode));
+      return existing;
     }
   };
 

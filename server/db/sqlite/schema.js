@@ -113,13 +113,18 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens (user_id
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked_expires_at ON refresh_tokens (revoked, expires_at);
 
 CREATE TABLE IF NOT EXISTS products (
+  product_inner_code TEXT NULL,
   product_code TEXT PRIMARY KEY,
   product_name TEXT NOT NULL,
+  spec TEXT NULL,
+  grade TEXT NULL,
   price REAL NOT NULL,
   quantity INTEGER NULL,
   unit TEXT NULL,
   vip_price REAL NULL,
   origin_price REAL NULL,
+  origin TEXT NULL,
+  manufacturer TEXT NULL,
   promotion TEXT NULL,
   last_synced_at TEXT NOT NULL,
   sync_status TEXT NOT NULL DEFAULT 'PENDING'

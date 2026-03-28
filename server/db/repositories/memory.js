@@ -406,13 +406,18 @@ export function createMemoryRepositories() {
   const productRepo = {
     async upsertProduct(product) {
       const record = {
+        product_inner_code: product.product_inner_code ?? null,
         product_code: String(product.product_code),
         product_name: String(product.product_name ?? ''),
+        spec: product.spec ?? null,
+        grade: product.grade ?? null,
         price: Number(product.price ?? 0),
         quantity: product.quantity ?? null,
         unit: product.unit ?? null,
         vip_price: product.vip_price ?? null,
         origin_price: product.origin_price ?? null,
+        origin: product.origin ?? null,
+        manufacturer: product.manufacturer ?? null,
         promotion: product.promotion ?? null,
         last_synced_at: new Date().toISOString(),
         sync_status: product.sync_status ?? 'SYNCED'
@@ -431,6 +436,16 @@ export function createMemoryRepositories() {
 
     async countProducts() {
       return productsByCode.size;
+    },
+
+    async deleteProduct(productCode) {
+      const existing = productsByCode.get(productCode) ?? null;
+      if (!existing) {
+        return null;
+      }
+
+      productsByCode.delete(productCode);
+      return existing;
     }
   };
 

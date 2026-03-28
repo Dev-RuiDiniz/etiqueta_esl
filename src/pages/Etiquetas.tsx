@@ -43,9 +43,13 @@ function parseOptionalNumber(value: string) {
   return Number.isFinite(normalized) ? normalized : undefined;
 }
 
-function buildDirectProductPayload(product: EslProductListItem, payloadForm: TemplatePayloadForm) {
+function buildDirectProductPayload(
+  product: EslProductListItem,
+  payloadForm: TemplatePayloadForm,
+  templateProfile: ReturnType<typeof resolveTemplateFieldProfile>
+) {
   const extendRaw = payloadForm.extend.trim();
-  let extend: Record<string, string | number | boolean> | undefined;
+  const extendEntries: Record<string, string | number | boolean> = {};
 
   if (extendRaw) {
     const parsed = JSON.parse(extendRaw);
@@ -54,14 +58,38 @@ function buildDirectProductPayload(product: EslProductListItem, payloadForm: Tem
       throw new Error('O campo extend deve ser um JSON de objeto. Ex: {"origem":"ilha"}');
     }
 
-    extend = parsed as Record<string, string | number | boolean>;
+    Object.assign(extendEntries, parsed as Record<string, string | number | boolean>);
+  }
+
+  const resolvedProductCode = payloadForm.product_code.trim() || product.product_code;
+  const resolvedProductName = payloadForm.product_name.trim() || product.product_name;
+  const resolvedPrice = parseOptionalNumber(payloadForm.price) ?? product.price;
+  const resolvedQuantity = parseOptionalNumber(payloadForm.quantity) ?? product.quantity ?? undefined;
+
+  for (const [fieldKey, aliases] of Object.entries(templateProfile.extendBindings ?? {})) {
+    const typedFieldKey = fieldKey as keyof TemplatePayloadForm;
+    let value: string | number | boolean | undefined;
+
+    if (typedFieldKey === 'product_code') value = resolvedProductCode;
+    else if (typedFieldKey === 'product_name') value = resolvedProductName;
+    else if (typedFieldKey === 'price') value = resolvedPrice;
+    else if (typedFieldKey === 'quantity') value = resolvedQuantity;
+    else value = payloadForm[typedFieldKey];
+
+    if (value === undefined || value === null || value === '') {
+      continue;
+    }
+
+    for (const alias of aliases ?? []) {
+      extendEntries[alias] = value;
+    }
   }
 
   return {
-    product_code: payloadForm.product_code.trim() || product.product_code,
-    product_name: payloadForm.product_name.trim() || product.product_name,
-    price: parseOptionalNumber(payloadForm.price) ?? product.price,
-    quantity: parseOptionalNumber(payloadForm.quantity) ?? product.quantity ?? undefined,
+    product_code: resolvedProductCode,
+    product_name: resolvedProductName,
+    price: resolvedPrice,
+    quantity: resolvedQuantity,
     unit: payloadForm.unit.trim() || undefined,
     vip_price: parseOptionalNumber(payloadForm.vip_price),
     origin_price: parseOptionalNumber(payloadForm.origin_price),
@@ -87,7 +115,7 @@ function buildDirectProductPayload(product: EslProductListItem, payloadForm: Tem
     f14: payloadForm.f14.trim() || undefined,
     f15: payloadForm.f15.trim() || undefined,
     f16: payloadForm.f16.trim() || undefined,
-    extend
+    extend: Object.keys(extendEntries).length > 0 ? extendEntries : undefined
   };
 }
 
@@ -317,7 +345,7 @@ function Etiquetas() {
         {
           esl_code: tag.esl_code,
           template_id: bindForm.template_id ? Number(bindForm.template_id) : undefined,
-          product: buildDirectProductPayload(product, templatePayloadForm)
+          product: buildDirectProductPayload(product, templatePayloadForm, templateProfile)
         }
       ]);
       setFlash({ ok: true, text: `Template aplicado na etiqueta ${tag.esl_code} com os campos preenchidos.` });

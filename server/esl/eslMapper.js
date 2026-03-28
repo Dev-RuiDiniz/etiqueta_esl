@@ -60,7 +60,7 @@ export function toVendorBindPayload(binding) {
   });
 }
 
-export function toVendorBindMultiplePayload(bindings) {
+export function toVendorBindMultiplePayload(bindings, stringify = true) {
   const mapped = bindings.map((item) => ({
     esl_code: asOptionalString(item.esl_code),
     product_code: asOptionalString(item.product_code),
@@ -68,25 +68,25 @@ export function toVendorBindMultiplePayload(bindings) {
   }));
 
   return {
-    f1: JSON.stringify(mapped)
+    f1: stringify ? JSON.stringify(mapped) : mapped
   };
 }
 
-export function toVendorQueryStatusPayload(params) {
+export function toVendorQueryStatusPayload(params, stringify = true) {
   return cleanObject({
     f1: asOptionalString(params.page),
     f2: asOptionalString(params.size),
-    f3: JSON.stringify(params.esl_codes ?? [])
+    f3: stringify ? JSON.stringify(params.esl_codes ?? []) : params.esl_codes ?? []
   });
 }
 
-export function toVendorSearchPayload(eslCodes) {
+export function toVendorSearchPayload(eslCodes, stringify = true) {
   return {
-    f1: JSON.stringify(eslCodes)
+    f1: stringify ? JSON.stringify(eslCodes) : eslCodes
   };
 }
 
-export function toVendorDirectPayload(items) {
+export function toVendorDirectPayload(items, stringify = true) {
   const mapped = items.map((item) => ({
     esl_code: asOptionalString(item.esl_code),
     template_id: item.template_id,
@@ -95,7 +95,7 @@ export function toVendorDirectPayload(items) {
   }));
 
   return {
-    f1: JSON.stringify(mapped)
+    f1: stringify ? JSON.stringify(mapped) : mapped
   };
 }
 

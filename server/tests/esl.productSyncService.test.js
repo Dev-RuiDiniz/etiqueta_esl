@@ -122,6 +122,15 @@ describe('EslProductSyncService', () => {
     const result = await svc.flushPendingUpserts(50);
     expect(result.success).toBe(true);
     expect(result.flushed_count).toBe(2);
+    expect(postMock).toHaveBeenCalledWith(
+      '/product/create_multiple',
+      expect.objectContaining({
+        f1: [
+          expect.objectContaining({ pc: 'P001', pn: 'A', pp: '1' }),
+          expect.objectContaining({ pc: 'P002', pn: 'B', pp: '2' })
+        ]
+      })
+    );
   });
 
   it('listProducts e countProducts refletem repositório', async () => {
