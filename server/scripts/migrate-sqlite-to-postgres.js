@@ -36,6 +36,7 @@ async function withTransaction(pool, callback) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query('SET LOCAL statement_timeout = 0');
     const result = await callback(client);
     await client.query('COMMIT');
     return result;
@@ -45,6 +46,21 @@ async function withTransaction(pool, callback) {
   } finally {
     client.release();
   }
+}
+
+function sqliteTableExists(sqlite, tableName) {
+  const row = sqlite
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .get(tableName);
+  return Boolean(row?.name);
+}
+
+function readSqliteTable(sqlite, tableName) {
+  if (!sqliteTableExists(sqlite, tableName)) {
+    return [];
+  }
+
+  return sqlite.prepare(`SELECT * FROM ${tableName}`).all();
 }
 
 export async function migrateSqliteToPostgres({ sqlitePath, databaseUrl }) {
@@ -76,7 +92,7 @@ export async function migrateSqliteToPostgres({ sqlitePath, databaseUrl }) {
 
   try {
     await withTransaction(pool, async (client) => {
-      const eslCatalog = sqlite.prepare('SELECT * FROM esl_catalog').all();
+      const eslCatalog = readSqliteTable(sqlite, 'esl_catalog');
       for (const row of eslCatalog) {
         await client.query(
           `
@@ -112,7 +128,7 @@ export async function migrateSqliteToPostgres({ sqlitePath, databaseUrl }) {
       }
       report.tables.esl_catalog = { source_count: eslCatalog.length, upserted: eslCatalog.length };
 
-      const eslBindings = sqlite.prepare('SELECT * FROM esl_bindings').all();
+      const eslBindings = readSqliteTable(sqlite, 'esl_bindings');
       for (const row of eslBindings) {
         await client.query(
           `
@@ -130,7 +146,7 @@ export async function migrateSqliteToPostgres({ sqlitePath, databaseUrl }) {
       }
       report.tables.esl_bindings = { source_count: eslBindings.length, upserted: eslBindings.length };
 
-      const snapshots = sqlite.prepare('SELECT * FROM esl_status_snapshots').all();
+      const snapshots = readSqliteTable(sqlite, 'esl_status_snapshots');
       for (const row of snapshots) {
         await client.query(
           `
@@ -171,7 +187,7 @@ export async function migrateSqliteToPostgres({ sqlitePath, databaseUrl }) {
       }
       report.tables.esl_status_snapshots = { source_count: snapshots.length, upserted: snapshots.length };
 
-      const commandLogs = sqlite.prepare('SELECT * FROM esl_command_log').all();
+      const commandLogs = readSqliteTable(sqlite, 'esl_command_log');
       for (const row of commandLogs) {
         await client.query(
           `
@@ -207,7 +223,7 @@ export async function migrateSqliteToPostgres({ sqlitePath, databaseUrl }) {
       }
       report.tables.esl_command_log = { source_count: commandLogs.length, upserted: commandLogs.length };
 
-      const deadLetters = sqlite.prepare('SELECT * FROM dead_letters').all();
+      const deadLetters = readSqliteTable(sqlite, 'dead_letters');
       for (const row of deadLetters) {
         await client.query(
           `
@@ -243,7 +259,7 @@ export async function migrateSqliteToPostgres({ sqlitePath, databaseUrl }) {
       }
       report.tables.dead_letters = { source_count: deadLetters.length, upserted: deadLetters.length };
 
-      const users = sqlite.prepare('SELECT * FROM users').all();
+      const users = readSqliteTable(sqlite, 'users');
       for (const row of users) {
         await client.query(
           `
@@ -260,7 +276,7 @@ export async function migrateSqliteToPostgres({ sqlitePath, databaseUrl }) {
       }
       report.tables.users = { source_count: users.length, upserted: users.length };
 
-      const refreshTokens = sqlite.prepare('SELECT * FROM refresh_tokens').all();
+      const refreshTokens = readSqliteTable(sqlite, 'refresh_tokens');
       for (const row of refreshTokens) {
         await client.query(
           `
@@ -288,7 +304,7 @@ export async function migrateSqliteToPostgres({ sqlitePath, databaseUrl }) {
       }
       report.tables.refresh_tokens = { source_count: refreshTokens.length, upserted: refreshTokens.length };
 
-      const products = sqlite.prepare('SELECT * FROM products').all();
+      const products = readSqliteTable(sqlite, 'products');
       for (const row of products) {
         await client.query(
           `
