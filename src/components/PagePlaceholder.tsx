@@ -21,7 +21,7 @@ function PagePlaceholder({ title, subtitle, kpis = [] }: PagePlaceholderProps) {
         <div className="row g-3 mb-4">
           {kpis.map((kpi) => (
             <div className="col-12 col-md-6" key={kpi.label}>
-              <article className="card shadow-sm h-100 border-0">
+              <article className="card shadow-sm h-100 border-0 app-surface">
                 <div className="card-body">
                   <p className="text-muted small mb-1">{kpi.label}</p>
                   <p className="h4 mb-0">{kpi.value}</p>
@@ -32,10 +32,10 @@ function PagePlaceholder({ title, subtitle, kpis = [] }: PagePlaceholderProps) {
         </div>
       )}
 
-      <article className="card border-0 shadow-sm">
+      <article className="card border-0 shadow-sm app-surface">
         <div className="card-body">
           <h3 className="h5">Visão geral</h3>
-          <p className="text-muted mb-0">Conteúdo em evolução para as próximas etapas do produto.</p>
+          <p className="text-muted mb-0">Conteúdo em evolução para as próximas etapas da plataforma LiveLabel.</p>
         </div>
       </article>
     </section>

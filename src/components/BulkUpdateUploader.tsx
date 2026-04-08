@@ -101,7 +101,7 @@ function BulkUpdateUploader() {
   };
 
   return (
-    <div className="card border-0 shadow-sm">
+    <div className="card border-0 shadow-sm app-surface">
       <div className="card-body">
         <h2 className="h5 mb-3">Atualização em lote</h2>
 
@@ -127,13 +127,13 @@ function BulkUpdateUploader() {
         </div>
 
         {selectedFile ? (
-          <div className="alert alert-light border mt-3" role="status">
+          <div className="app-alert app-alert--neutral mt-3" role="status">
             Arquivo selecionado: <strong>{selectedFile.name}</strong> ({(selectedFile.size / 1024).toFixed(1)} KB)
           </div>
         ) : null}
 
         {parseError ? (
-          <div className="alert alert-danger" role="alert">
+          <div className="app-alert app-alert--danger" role="alert">
             {parseError}
           </div>
         ) : null}
@@ -141,7 +141,7 @@ function BulkUpdateUploader() {
         {csvRows.length > 0 ? (
           <>
             <div className="table-responsive mt-3">
-              <table className="table table-sm table-striped align-middle">
+              <table className="table table-sm table-striped align-middle admin-table">
                 <thead>
                   <tr>
                     <th scope="col">SKU</th>
@@ -171,7 +171,7 @@ function BulkUpdateUploader() {
             </div>
           </>
         ) : (
-          <div className="alert alert-secondary mt-3 mb-0">Nenhum item carregado para atualização em lote.</div>
+          <div className="app-alert app-alert--neutral mt-3 mb-0">Nenhum item carregado para atualização em lote.</div>
         )}
 
         <BulkUpdateTable items={processedItems} isProcessing={isProcessing} onRetryItem={(itemId) => void handleRetryItem(itemId)} />

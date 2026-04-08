@@ -399,19 +399,20 @@ function Etiquetas() {
 
   return (
     <div className="container-fluid px-0">
-      <header className="mb-4">
-        <h1 className="h3 mb-1">Base stations e etiquetas</h1>
-        <p className="text-muted mb-0">Visão operacional agrupada por `ap_code`, com controle de etiquetas, templates compatíveis e comandos pela API.</p>
+      <header className="page-header mb-4">
+        <span className="eyebrow">LiveLabel</span>
+        <h1 className="h3 mb-1">Rede de estações e etiquetas</h1>
+        <p className="text-muted mb-0">Malha operacional agrupada por `ap_code`, com cadastro, descoberta, templates compatíveis e comandos em tempo real.</p>
       </header>
 
       <div className="row g-4 mb-4">
         <div className="col-12 col-xl-4">
-          <div className="card border-0 shadow-sm h-100">
+          <div className="card border-0 shadow-sm h-100 app-surface">
             <div className="card-body">
-              <h2 className="h5 mb-3">Cadastrar ESL</h2>
+              <h2 className="h5 mb-3">Cadastrar ativo LiveLabel</h2>
               <form onSubmit={(event) => void handleCreate(event)}>
                 <div className="mb-3">
-                  <label htmlFor="catalog-esl-code" className="form-label">Código da etiqueta</label>
+                  <label htmlFor="catalog-esl-code" className="form-label">Código do ativo</label>
                   <input
                     id="catalog-esl-code"
                     className="form-control"
@@ -440,10 +441,10 @@ function Etiquetas() {
                     onChange={(event) => setCreateForm((current) => ({ ...current, expected_ap_code: event.target.value }))}
                     placeholder="Ex: 40:d6:3c:2d:22:07"
                   />
-                  <div className="form-text">Opcional. Usado enquanto a etiqueta ainda não foi descoberta de verdade no vendor.</div>
+                  <div className="form-text">Opcional. Referência usada até a descoberta real pela infraestrutura do fornecedor.</div>
                 </div>
                 <button type="submit" className="btn btn-primary w-100" disabled={createSubmitting}>
-                  {createSubmitting ? 'Salvando...' : 'Cadastrar etiqueta'}
+                  {createSubmitting ? 'Salvando...' : 'Cadastrar ativo'}
                 </button>
               </form>
             </div>
@@ -451,21 +452,21 @@ function Etiquetas() {
         </div>
 
         <div className="col-12 col-xl-4">
-          <div className="card border-0 shadow-sm h-100">
+          <div className="card border-0 shadow-sm h-100 app-surface">
             <div className="card-body d-flex flex-column">
-              <h2 className="h5 mb-3">Descoberta por station</h2>
+              <h2 className="h5 mb-3">Descoberta por estação</h2>
               <p className="text-muted mb-4">
-                Busca etiquetas já visíveis no vendor/cloud, agrupa por `ap_code` e reconcilia itens pendentes cadastrados pelo sistema.
+                Busca etiquetas visíveis no vendor/cloud, agrupa por `ap_code` e reconcilia ativos pendentes cadastrados pela plataforma.
               </p>
               <button type="button" className="btn btn-outline-primary mt-auto" onClick={() => void handleImport()} disabled={importing}>
-                {importing ? 'Importando...' : 'Importar etiquetas do vendor'}
+                {importing ? 'Importando...' : 'Importar ativos do vendor'}
               </button>
             </div>
           </div>
         </div>
 
         <div className="col-12 col-xl-4">
-          <div className="card border-0 shadow-sm h-100">
+          <div className="card border-0 shadow-sm h-100 app-surface">
             <div className="card-body">
               <h2 className="h5 mb-3">Resumo geral</h2>
               <div className="d-flex justify-content-between py-2 border-bottom">
@@ -473,7 +474,7 @@ function Etiquetas() {
                 <strong>{totals.stations}</strong>
               </div>
               <div className="d-flex justify-content-between py-2 border-bottom">
-                <span className="text-muted">Etiquetas mapeadas</span>
+                <span className="text-muted">Ativos mapeados</span>
                 <strong>{totals.tags}</strong>
               </div>
               <div className="d-flex justify-content-between py-2 border-bottom">
@@ -493,7 +494,7 @@ function Etiquetas() {
       </div>
 
       {flash ? (
-        <div className={`alert ${flash.ok ? 'alert-success' : 'alert-danger'}`} role="alert">
+        <div className={`${flash.ok ? 'app-alert app-alert--success' : 'app-alert app-alert--danger'}`} role="alert">
           {flash.text}
         </div>
       ) : null}
@@ -509,7 +510,7 @@ function Etiquetas() {
       ) : stations.length === 0 ? (
         <EmptyState
           title="Nenhuma base station visível"
-          description="Importe etiquetas do vendor para descobrir `ap_code` e montar a visão operacional por station."
+          description="Importe ativos do vendor para descobrir `ap_code` e montar a visão operacional da rede LiveLabel."
           action={
             <button className="btn btn-outline-primary" type="button" onClick={() => void handleImport()}>
               Importar do vendor
@@ -518,7 +519,7 @@ function Etiquetas() {
         />
       ) : (
         <>
-          <div className="card border-0 shadow-sm mb-4">
+          <div className="card border-0 shadow-sm mb-4 app-surface">
             <div className="card-body">
               <div className="d-flex flex-wrap gap-2">
                 {stations.map((station) => (
@@ -539,7 +540,7 @@ function Etiquetas() {
             <>
               <div className="row g-4 mb-4">
                 <div className="col-12 col-lg-4">
-                  <div className="card border-0 shadow-sm h-100">
+                  <div className="card border-0 shadow-sm h-100 app-surface">
                     <div className="card-body">
                       <h2 className="h5 mb-3">Station ativa</h2>
                       <div className="fs-5 fw-semibold">{stationLabel(activeStation.station_code)}</div>
@@ -565,7 +566,7 @@ function Etiquetas() {
                 </div>
 
                 <div className="col-12 col-lg-8">
-                  <div className="card border-0 shadow-sm h-100">
+                  <div className="card border-0 shadow-sm h-100 app-surface">
                     <div className="card-body">
                       <h2 className="h5 mb-3">Capacidade de operação</h2>
                       <div className="row g-3">
@@ -591,7 +592,7 @@ function Etiquetas() {
                 </div>
               </div>
 
-              <div className="card border-0 shadow-sm">
+              <div className="card border-0 shadow-sm app-surface">
                 <div className="card-body">
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <h2 className="h5 mb-0">Etiquetas da station ({activeTags.length})</h2>
@@ -607,10 +608,10 @@ function Etiquetas() {
                     />
                   ) : (
                     <div className="table-responsive">
-                      <table className="table table-hover align-middle">
-                        <thead className="table-light">
+                      <table className="table table-hover align-middle admin-table">
+                        <thead>
                           <tr>
-                            <th>Etiqueta</th>
+                            <th>Ativo</th>
                             <th>Registro</th>
                             <th>Status</th>
                             <th>Bateria</th>
@@ -692,8 +693,8 @@ function Etiquetas() {
                                 {activeTagCode === tag.esl_code ? (
                                   <div className="border rounded p-3 mt-3 bg-light">
                                     {tag.registration_status === 'PENDING_DISCOVERY' ? (
-                                      <div className="alert alert-warning py-2 mb-3" role="alert">
-                                        Etiqueta cadastrada localmente. Aguarde descoberta real no vendor/base station para habilitar bind, LED e refresh.
+                                      <div className="app-alert app-alert--warning py-2 mb-3" role="alert">
+                                        Ativo cadastrado localmente. Aguarde descoberta real no vendor/base station para habilitar bind, LED e refresh.
                                       </div>
                                     ) : null}
                                     <div className="row g-2">

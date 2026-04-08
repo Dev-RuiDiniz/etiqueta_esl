@@ -5,9 +5,10 @@ import { NavLink, Outlet, useSearchParams } from '../lib/router';
 function AtualizacoesHub() {
   return (
     <div className="container-fluid px-0">
-      <header className="mb-4">
-        <h1 className="h3 mb-1">Atualizações</h1>
-        <p className="text-muted mb-0">Fluxo demonstrativo de atualização de preços em etiquetas.</p>
+      <header className="page-header mb-4">
+        <span className="eyebrow">LiveLabel</span>
+        <h1 className="h3 mb-1">Atualizações de conteúdo</h1>
+        <p className="text-muted mb-0">Fluxos de sincronização individual e em lote para manter comunicação visual e preço sempre coerentes.</p>
       </header>
 
       <ul className="nav nav-tabs mb-4">

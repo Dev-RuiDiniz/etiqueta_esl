@@ -59,7 +59,7 @@ function TagDetailsModal({ isOpen, tag, onClose }: TagDetailsModalProps) {
           <div className="row g-4">
             <div className="col-12 col-lg-6">
               <dl className="row mb-0">
-                <dt className="col-sm-4">EtiquetaID</dt>
+                <dt className="col-sm-4">Ativo ID</dt>
                 <dd className="col-sm-8">{tag.tagId}</dd>
 
                 <dt className="col-sm-4">SKU</dt>

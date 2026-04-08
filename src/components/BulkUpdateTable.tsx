@@ -10,11 +10,11 @@ type BulkUpdateTableProps = {
 
 function BulkUpdateTable({ items, isProcessing, onRetryItem }: BulkUpdateTableProps) {
   if (items.length === 0) {
-    return <div className="alert alert-secondary mb-0">Nenhum item processado ainda.</div>;
+    return <div className="app-alert app-alert--neutral mb-0">Nenhum item processado ainda.</div>;
   }
 
   return (
-    <div className="card border-0 shadow-sm mt-4">
+    <div className="card border-0 shadow-sm mt-4 app-surface">
       <div className="card-body">
         <div className="d-flex align-items-center justify-content-between mb-3">
           <h3 className="h6 mb-0">Itens processados</h3>
@@ -27,8 +27,8 @@ function BulkUpdateTable({ items, isProcessing, onRetryItem }: BulkUpdateTablePr
         </div>
 
         <div className="table-responsive">
-          <table className="table align-middle mb-0">
-            <thead className="table-light">
+          <table className="table align-middle mb-0 admin-table">
+            <thead>
               <tr>
                 <th scope="col">Item</th>
                 <th scope="col">Novo preço</th>
@@ -53,7 +53,7 @@ function BulkUpdateTable({ items, isProcessing, onRetryItem }: BulkUpdateTablePr
                     <td className="text-end">
                       {item.status === 'FAILED' ? (
                         <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => onRetryItem(item.id)}>
-                          Retry
+                          Reenviar
                         </button>
                       ) : (
                         <span className="text-muted small">—</span>

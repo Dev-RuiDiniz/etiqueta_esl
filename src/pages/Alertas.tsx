@@ -115,22 +115,23 @@ function Alertas() {
 
   return (
     <div className="container-fluid px-0 alerts-page">
-      <header className="mb-4">
-        <h1 className="h3 mb-1">Alertas</h1>
-        <p className="text-muted mb-0">Central de incidentes operacionais das etiquetas.</p>
+      <header className="page-header mb-4">
+        <span className="eyebrow">LiveLabel</span>
+        <h1 className="h3 mb-1">Incidentes operacionais</h1>
+        <p className="text-muted mb-0">Fila viva de eventos que exigem ação para manter a operação digital sustentável.</p>
       </header>
 
       {actionFeedback ? (
-        <div className="alert alert-success alert-dismissible fade show" role="alert">
+        <div className="app-alert app-alert--success d-flex align-items-start justify-content-between gap-3" role="alert">
           {actionFeedback}
-          <button type="button" className="btn-close" aria-label="Close" onClick={() => setActionFeedback(null)} />
+          <button type="button" className="btn-close" aria-label="Fechar" onClick={() => setActionFeedback(null)} />
         </div>
       ) : null}
 
       {actionError ? (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+        <div className="app-alert app-alert--danger d-flex align-items-start justify-content-between gap-3" role="alert">
           {actionError}
-          <button type="button" className="btn-close" aria-label="Close" onClick={() => setActionError(null)} />
+          <button type="button" className="btn-close" aria-label="Fechar" onClick={() => setActionError(null)} />
         </div>
       ) : null}
 

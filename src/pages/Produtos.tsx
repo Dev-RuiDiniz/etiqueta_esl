@@ -153,7 +153,7 @@ function Produtos() {
     const originPrice = parseOptionalNumber(form.origin_price);
 
     if (!form.product_code.trim() || !form.product_name.trim() || !isValidNumber(price) || price <= 0) {
-      setSubmitMsg({ ok: false, text: 'Preencha corretamente os campos obrigatórios Barcode, Product name e Price.' });
+      setSubmitMsg({ ok: false, text: 'Preencha corretamente os campos obrigatórios código de barras, nome do produto e preço.' });
       return;
     }
 
@@ -249,12 +249,13 @@ function Produtos() {
 
   return (
     <div className="container-fluid px-0">
-      <header className="mb-4">
-        <h1 className="h3 mb-1">Produtos</h1>
-        <p className="text-muted mb-0">Catálogo com os campos do produto organizados conforme o payload da API ESL.</p>
+      <header className="page-header mb-4">
+        <span className="eyebrow">LiveLabel</span>
+        <h1 className="h3 mb-1">Catálogo operacional</h1>
+        <p className="text-muted mb-0">Produtos preparados para sincronização confiável com a malha LiveLabel e seus templates digitais.</p>
       </header>
 
-      <div className="card border-0 shadow-sm mb-4">
+      <div className="card border-0 shadow-sm mb-4 app-surface">
         <div className="card-body">
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <h2 className="h5 mb-0">{editingCode ? 'Atualizar produto' : 'Cadastrar produto'}</h2>
@@ -268,17 +269,17 @@ function Produtos() {
           <form onSubmit={(e) => void handleSubmit(e)}>
             <div className="row g-3">
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-inner-code" className="form-label">Internal code (#pi)</label>
+                <label htmlFor="prod-inner-code" className="form-label">Código interno (#pi)</label>
                 <input
                   id="prod-inner-code"
                   className="form-control"
                   value={form.product_inner_code}
                   onChange={(e) => handleChange('product_inner_code', e.target.value)}
-                  placeholder="Input Internal code (#pi)"
+                  placeholder="Código interno do ERP"
                 />
               </div>
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-code" className="form-label">Barcode (#pc)</label>
+                <label htmlFor="prod-code" className="form-label">Código de barras (#pc)</label>
                 <input
                   id="prod-code"
                   className="form-control"
@@ -289,7 +290,7 @@ function Produtos() {
                 />
               </div>
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-name" className="form-label">Product name (#pn)</label>
+                <label htmlFor="prod-name" className="form-label">Nome do produto (#pn)</label>
                 <input
                   id="prod-name"
                   className="form-control"
@@ -300,7 +301,7 @@ function Produtos() {
                 />
               </div>
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-spec" className="form-label">Specification (#ps)</label>
+                <label htmlFor="prod-spec" className="form-label">Especificação (#ps)</label>
                 <input
                   id="prod-spec"
                   className="form-control"
@@ -316,11 +317,11 @@ function Produtos() {
                   className="form-control"
                   value={form.grade}
                   onChange={(e) => handleChange('grade', e.target.value)}
-                  placeholder="Input Grade (#pg)"
+                  placeholder="Linha, grade ou variação"
                 />
               </div>
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-unit" className="form-label">Unit (#pu)</label>
+                <label htmlFor="prod-unit" className="form-label">Unidade (#pu)</label>
                 <input
                   id="prod-unit"
                   className="form-control"
@@ -330,7 +331,7 @@ function Produtos() {
                 />
               </div>
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-price" className="form-label">Price (#pp)</label>
+                <label htmlFor="prod-price" className="form-label">Preço (#pp)</label>
                 <input
                   id="prod-price"
                   className="form-control"
@@ -341,7 +342,7 @@ function Produtos() {
                 />
               </div>
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-vip-price" className="form-label">Discount Price (#vp)</label>
+                <label htmlFor="prod-vip-price" className="form-label">Preço promocional (#vp)</label>
                 <input
                   id="prod-vip-price"
                   className="form-control"
@@ -351,7 +352,7 @@ function Produtos() {
                 />
               </div>
               <div className="col-12 col-md-4">
-                <label htmlFor="prod-origin-price" className="form-label">Original Price (#pop)</label>
+                <label htmlFor="prod-origin-price" className="form-label">Preço de origem (#pop)</label>
                 <input
                   id="prod-origin-price"
                   className="form-control"
@@ -361,7 +362,7 @@ function Produtos() {
                 />
               </div>
               <div className="col-12 col-md-6">
-                <label htmlFor="prod-origin" className="form-label">Origin (#po)</label>
+                <label htmlFor="prod-origin" className="form-label">Origem (#po)</label>
                 <input
                   id="prod-origin"
                   className="form-control"
@@ -371,7 +372,7 @@ function Produtos() {
                 />
               </div>
               <div className="col-12 col-md-6">
-                <label htmlFor="prod-manufacturer" className="form-label">MFRS (#pm)</label>
+                <label htmlFor="prod-manufacturer" className="form-label">Fabricante (#pm)</label>
                 <input
                   id="prod-manufacturer"
                   className="form-control"
@@ -395,7 +396,7 @@ function Produtos() {
             </div>
 
             {submitMsg ? (
-              <div className={`alert mt-3 mb-0 ${submitMsg.ok ? 'alert-success' : 'alert-danger'}`} role="alert">
+              <div className={`mt-3 mb-0 ${submitMsg.ok ? 'app-alert app-alert--success' : 'app-alert app-alert--danger'}`} role="alert">
                 {submitMsg.text}
               </div>
             ) : null}
@@ -403,7 +404,7 @@ function Produtos() {
         </div>
       </div>
 
-      <div className="card border-0 shadow-sm">
+      <div className="card border-0 shadow-sm app-surface">
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h2 className="h5 mb-0">Catálogo ({total} produto{total !== 1 ? 's' : ''})</h2>
@@ -428,20 +429,20 @@ function Produtos() {
           ) : (
             <>
               <div className="table-responsive">
-                <table className="table table-hover align-middle">
-                  <thead className="table-light">
+                <table className="table table-hover align-middle admin-table">
+                  <thead>
                     <tr>
-                      <th>Internal code (#pi)</th>
-                      <th>Barcode (#pc)</th>
-                      <th>Product name (#pn)</th>
-                      <th>Specification (#ps)</th>
+                      <th>Código interno (#pi)</th>
+                      <th>Código de barras (#pc)</th>
+                      <th>Produto (#pn)</th>
+                      <th>Especificação (#ps)</th>
                       <th>Grade (#pg)</th>
-                      <th>Unit (#pu)</th>
-                      <th>Price (#pp)</th>
-                      <th>Discount (#vp)</th>
-                      <th>Original (#pop)</th>
-                      <th>Origin (#po)</th>
-                      <th>MFRS (#pm)</th>
+                      <th>Unidade (#pu)</th>
+                      <th>Preço (#pp)</th>
+                      <th>Promo (#vp)</th>
+                      <th>Origem preço (#pop)</th>
+                      <th>Origem (#po)</th>
+                      <th>Fabricante (#pm)</th>
                       <th>Qtd.</th>
                       <th>Status</th>
                       <th>Última sinc.</th>
@@ -503,11 +504,11 @@ function Produtos() {
                         </tr>
                         {expandedCode === product.product_code ? (
                           <tr>
-                            <td colSpan={15} className="bg-light">
+                            <td colSpan={15} className="table-inline-panel">
                               {loadingBindings ? (
                                 <span className="text-muted small">Carregando vínculos...</span>
                               ) : bindings.length === 0 ? (
-                                <span className="text-muted small">Nenhuma etiqueta vinculada.</span>
+                                <span className="text-muted small">Nenhum ativo vinculado.</span>
                               ) : (
                                 <ul className="mb-0 list-unstyled small">
                                   {bindings.map((binding) => (

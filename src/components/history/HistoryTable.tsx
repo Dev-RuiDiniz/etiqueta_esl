@@ -10,15 +10,15 @@ type HistoryTableProps = {
 
 function HistoryTable({ items, onViewTag }: HistoryTableProps) {
   return (
-    <div className="card border-0 shadow-sm">
+    <div className="card border-0 shadow-sm app-surface">
       <div className="table-responsive">
-        <table className="table table-hover align-middle mb-0">
-          <thead className="table-light">
+        <table className="table table-hover align-middle mb-0 admin-table">
+          <thead>
             <tr>
               <th scope="col">Data/hora</th>
               <th scope="col">Produto</th>
               <th scope="col">SKU</th>
-              <th scope="col">EtiquetaID</th>
+              <th scope="col">Ativo ID</th>
               <th scope="col">Preço anterior</th>
               <th scope="col">Novo preço</th>
               <th scope="col">Status</th>
@@ -56,7 +56,7 @@ function HistoryTable({ items, onViewTag }: HistoryTableProps) {
                       className="btn btn-sm btn-outline-primary"
                       onClick={() => onViewTag(item.tagId)}
                     >
-                      Ver detalhes
+                      Abrir ativo
                     </button>
                   </td>
                 </tr>

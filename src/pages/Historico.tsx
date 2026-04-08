@@ -77,9 +77,10 @@ function Historico() {
 
   return (
     <div className="container-fluid px-0 history-page">
-      <header className="mb-4">
-        <h1 className="h3 mb-1">Histórico</h1>
-        <p className="text-muted mb-0">Consulta de alterações e atualizações enviadas às etiquetas.</p>
+      <header className="page-header mb-4">
+        <span className="eyebrow">LiveLabel</span>
+        <h1 className="h3 mb-1">Rastreabilidade da operação</h1>
+        <p className="text-muted mb-0">Linha do tempo das alterações enviadas à rede de etiquetas digitais LiveLabel.</p>
       </header>
 
       {error ? (

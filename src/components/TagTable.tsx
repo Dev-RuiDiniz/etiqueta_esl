@@ -10,12 +10,12 @@ type TagTableProps = {
 
 function TagTable({ tags, onViewDetails }: TagTableProps) {
   return (
-    <div className="card border-0 shadow-sm">
+    <div className="card border-0 shadow-sm app-surface">
       <div className="table-responsive">
         <table className="table table-hover align-middle mb-0">
-          <thead className="table-light">
+          <thead>
             <tr>
-              <th scope="col">EtiquetaID</th>
+              <th scope="col">Ativo ID</th>
               <th scope="col">SKU</th>
               <th scope="col">Produto</th>
               <th scope="col">Preço (R$)</th>

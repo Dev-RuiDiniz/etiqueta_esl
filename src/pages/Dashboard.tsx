@@ -15,37 +15,38 @@ function Dashboard() {
 
     return [
       {
-        title: 'Total de etiquetas',
+        title: 'Ativos monitorados',
         value: summary.kpis.totalTags,
-        helperText: '+2 hoje',
-        icon: '🏷️'
+        helperText: 'Rede LiveLabel visível agora',
+        icon: 'assets'
       },
       {
-        title: 'Etiquetas online',
+        title: 'Conectadas',
         value: summary.kpis.online,
-        helperText: 'Conectadas agora',
-        icon: '🟢'
+        helperText: 'Resposta operacional em tempo real',
+        icon: 'live'
       },
       {
-        title: 'Etiquetas offline',
+        title: 'Com atenção',
         value: summary.kpis.offline,
-        helperText: 'Requer atenção',
-        icon: '🔌'
+        helperText: 'Etiquetas ou links sem resposta',
+        icon: 'risk'
       },
       {
-        title: 'Bateria baixa',
+        title: 'Energia baixa',
         value: summary.kpis.lowBattery,
-        helperText: 'Monitoradas hoje',
-        icon: '🔋'
+        helperText: 'Prioridade de manutenção preventiva',
+        icon: 'power'
       }
     ];
   }, [summary]);
 
   return (
     <div className="container-fluid px-0 dashboard-page">
-      <header className="mb-4">
-        <h1 className="h3 mb-1">Dashboard</h1>
-        <p className="text-muted mb-0">Visão geral do status das etiquetas e operação.</p>
+      <header className="page-header mb-4">
+        <span className="eyebrow">LiveLabel</span>
+        <h1 className="h3 mb-1">Visão geral da operação sustentável</h1>
+        <p className="text-muted mb-0">Conectividade, saúde da rede de etiquetas e estabilidade operacional em uma leitura única.</p>
       </header>
 
       {error ? (
@@ -80,11 +81,11 @@ function Dashboard() {
 
       <section className="row g-3">
         <div className="col-12 col-xl-8">
-          <article className="card border-0 shadow-sm h-100">
+          <article className="card border-0 shadow-sm h-100 app-surface">
             <div className="card-body">
               <div className="d-flex align-items-center justify-content-between mb-3">
-                <h2 className="h6 mb-0">Offline por corredor</h2>
-                <span className="small text-muted">Dados demonstrativos</span>
+                <h2 className="h6 mb-0">Zonas com perda de conectividade</h2>
+                <span className="small text-muted">Leitura agregada da malha LiveLabel</span>
               </div>
 
               {isLoading ? (
@@ -101,7 +102,7 @@ function Dashboard() {
                   {summary?.offlineByCorridor.map((item) => (
                     <li key={item.corridor} className="list-group-item px-0 d-flex justify-content-between align-items-center">
                       <span>{item.corridor}</span>
-                      <span className="badge text-bg-light border">{item.offline} offline</span>
+                      <span className="badge text-bg-light border">{item.offline} ponto(s) em risco</span>
                     </li>
                   ))}
                 </ul>

@@ -29,7 +29,7 @@ function AlertFiltersBar({ filters, onFilterChange, onClearFilters }: AlertFilte
   }, [filters, onFilterChange, queryDraft]);
 
   return (
-    <section className="card border-0 shadow-sm mb-3">
+    <section className="card border-0 shadow-sm mb-3 app-surface">
       <div className="card-body">
         <div className="row g-3 align-items-end">
           <div className="col-12 col-md-6 col-lg-2">
@@ -91,7 +91,7 @@ function AlertFiltersBar({ filters, onFilterChange, onClearFilters }: AlertFilte
               id="alerts-filter-query"
               className="form-control"
               type="search"
-              placeholder="EtiquetaID, SKU ou Produto"
+              placeholder="Ativo ID, SKU ou produto"
               value={queryDraft}
               onChange={(event) => setQueryDraft(event.target.value)}
             />

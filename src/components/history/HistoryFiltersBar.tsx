@@ -16,10 +16,10 @@ function HistoryFiltersBar({ filters, validationMessage, onApply, onClear }: His
   }, [filters]);
 
   return (
-    <section className="card border-0 shadow-sm mb-3">
+    <section className="card border-0 shadow-sm mb-3 app-surface">
       <div className="card-body">
         {validationMessage ? (
-          <div className="alert alert-warning" role="alert">
+          <div className="app-alert app-alert--warning" role="alert">
             {validationMessage}
           </div>
         ) : null}
@@ -67,7 +67,7 @@ function HistoryFiltersBar({ filters, validationMessage, onApply, onClear }: His
 
           <div className="col-12 col-md-6 col-lg-2">
             <label className="form-label" htmlFor="history-filter-tag-id">
-              EtiquetaID
+              Ativo ID
             </label>
             <input
               id="history-filter-tag-id"

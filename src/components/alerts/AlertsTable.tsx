@@ -13,15 +13,15 @@ type AlertsTableProps = {
 
 function AlertsTable({ alerts, isResolvingById, onResolve, onViewTag }: AlertsTableProps) {
   return (
-    <div className="card border-0 shadow-sm">
+    <div className="card border-0 shadow-sm app-surface">
       <div className="table-responsive">
-        <table className="table table-hover align-middle mb-0">
-          <thead className="table-light">
+        <table className="table table-hover align-middle mb-0 admin-table">
+          <thead>
             <tr>
               <th scope="col">Data/hora</th>
               <th scope="col">Tipo</th>
               <th scope="col">Prioridade</th>
-              <th scope="col">EtiquetaID</th>
+              <th scope="col">Ativo ID</th>
               <th scope="col">Produto</th>
               <th scope="col">Localização</th>
               <th scope="col">Status</th>
@@ -74,12 +74,8 @@ function AlertsTable({ alerts, isResolvingById, onResolve, onViewTag }: AlertsTa
                             {isResolving ? 'Resolvendo...' : 'Marcar como resolvido'}
                           </button>
                         ) : null}
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => onViewTag(alert.tagId)}
-                        >
-                          Ver detalhes
+                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => onViewTag(alert.tagId)}>
+                          Abrir ativo
                         </button>
                       </div>
                     </td>

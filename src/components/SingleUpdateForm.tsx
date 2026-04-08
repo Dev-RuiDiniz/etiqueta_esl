@@ -145,7 +145,7 @@ function SingleUpdateForm({ preselectedTagId }: SingleUpdateFormProps) {
   };
 
   return (
-    <div className="card border-0 shadow-sm">
+    <div className="card border-0 shadow-sm app-surface">
       <div className="card-body">
         <h2 className="h5 mb-3">Atualização individual</h2>
 
@@ -155,7 +155,7 @@ function SingleUpdateForm({ preselectedTagId }: SingleUpdateFormProps) {
             <span>Carregando etiquetas...</span>
           </div>
         ) : hasTagError ? (
-          <div className="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+          <div className="app-alert app-alert--danger d-flex justify-content-between align-items-center" role="alert">
             <span>Erro ao carregar etiquetas.</span>
             <button className="btn btn-sm btn-outline-danger" type="button" onClick={() => void loadTags()}>
               Tentar novamente
@@ -166,7 +166,7 @@ function SingleUpdateForm({ preselectedTagId }: SingleUpdateFormProps) {
             <div className="row g-3">
               <div className="col-12">
                 <label htmlFor="tag-select" className="form-label">
-                  Etiqueta
+                  Ativo digital
                 </label>
                 <select
                   id="tag-select"
@@ -175,14 +175,14 @@ function SingleUpdateForm({ preselectedTagId }: SingleUpdateFormProps) {
                   value={selectedTagId}
                   onChange={(event) => setSelectedTagId(event.target.value)}
                 >
-                  <option value="">Selecione a etiqueta</option>
+                  <option value="">Selecione o ativo</option>
                   {tags.map((tag) => (
                     <option key={tag.tagId} value={tag.tagId}>
                       {tag.tagId} · {tag.productName} ({tag.sku})
                     </option>
                   ))}
                 </select>
-                <div className="invalid-feedback">Selecione uma etiqueta para continuar.</div>
+                <div className="invalid-feedback">Selecione um ativo para continuar.</div>
               </div>
 
               <div className="col-12 col-md-6">
@@ -260,7 +260,7 @@ function SingleUpdateForm({ preselectedTagId }: SingleUpdateFormProps) {
             </div>
 
             {selectedTag ? (
-              <div className="alert alert-light border mt-3 mb-0" role="status">
+              <div className="app-alert app-alert--neutral mt-3 mb-0" role="status">
                 Selecionado: <strong>{selectedTag.productName}</strong> ({selectedTag.tagId}) · preço atual{' '}
                 <strong>{formatCurrencyBRL(selectedTag.price)}</strong>
               </div>
@@ -282,7 +282,10 @@ function SingleUpdateForm({ preselectedTagId }: SingleUpdateFormProps) {
         )}
 
         {submissionState ? (
-          <div className={`alert mt-4 mb-0 ${submissionState.status === 'FAILED' ? 'alert-danger' : 'alert-success'}`} role="alert">
+          <div
+            className={`mt-4 mb-0 ${submissionState.status === 'FAILED' ? 'app-alert app-alert--danger' : 'app-alert app-alert--success'}`}
+            role="alert"
+          >
             <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
               <div className="d-flex align-items-center gap-2">
                 <UpdateStatusBadge status={submissionState.status} />

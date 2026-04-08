@@ -31,7 +31,7 @@ function TagFilters({ filters, categories, corridors, onFilterChange, onClearFil
   }, [filters, onFilterChange, queryDraft]);
 
   return (
-    <section className="card border-0 shadow-sm mb-3">
+    <section className="card border-0 shadow-sm mb-3 app-surface">
       <div className="card-body">
         <div className="row g-3 align-items-end">
           <div className="col-12 col-md-6 col-lg-2">
@@ -96,7 +96,7 @@ function TagFilters({ filters, categories, corridors, onFilterChange, onClearFil
               id="filter-query"
               className="form-control"
               type="search"
-              placeholder="SKU, Produto ou EtiquetaID"
+              placeholder="SKU, produto ou ativo ID"
               value={queryDraft}
               onChange={(event) => setQueryDraft(event.target.value)}
             />
