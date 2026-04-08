@@ -113,24 +113,26 @@ F --> E --> D --> C --> B --> A
 | GET | `/readyz` | Readiness (config + DB + auth + vendor) |
 | GET | `/metrics` | Métricas Prometheus |
 
-## 6. Persistência local e backup
+## 6. Persistência e modos de banco
 
 Modo configurável por `BFF_PERSISTENCE_MODE`:
 
-- `sqlite` (padrão): persistência em arquivo local no PC do cliente.
+- `postgres`: persistência cloud (Supabase) para produção na Vercel.
+- `sqlite` (legado): persistência em arquivo local, mantida para migração e operação on-prem.
 - `memory`: desenvolvimento/testes sem persistência em disco.
 
-Entidades persistidas no SQLite:
+Entidades persistidas:
 
+- `esl_catalog`
 - `esl_bindings`
 - `esl_status_snapshots`
 - `esl_command_log`
 - `dead_letters`
 - `users`
 - `refresh_tokens`
-- `products` _(novo — catálogo de produtos com sync_status)_
+- `products`
 
-Estrutura local (por padrão no perfil do usuário):
+### SQLite local (legado)
 
 - `data/etiqueta_esl.sqlite` (banco ativo)
 - `backups/*.sqlite` (cópias locais)
@@ -152,6 +154,12 @@ Com `--yes`, pula confirmação interativa:
 ```bash
 npm run bff:restore -- <caminho-do-backup.sqlite> --yes
 ```
+
+### Postgres/Supabase (produção cloud)
+
+- `DATABASE_URL` aponta para o pooler do Supabase.
+- O schema é aplicado por migrações versionadas em `server/db/postgres/migrations`.
+- Para produção na Vercel, use `BFF_PERSISTENCE_MODE=postgres`.
 
 ## 7. Segurança (JWT + RBAC)
 
@@ -243,6 +251,32 @@ npm run bff
 npm run dev
 ```
 
+### Modo real cloud (Vercel + Supabase)
+
+No projeto Vercel, configure:
+
+```env
+BFF_SERVERLESS=true
+BFF_PERSISTENCE_MODE=postgres
+DATABASE_URL=postgresql://...
+BFF_AUTH_ENABLED=true
+CRON_SECRET=defina_um_segredo_forte
+ALLOWED_ORIGINS=https://seu-frontend.vercel.app
+
+ESL_HOST=https://esl.greendisplay.cn
+ESL_CLIENT_ID=seu_client_id
+ESL_SIGN=seu_sign
+ESL_STORE_CODE=001
+ESL_IS_BASE64=0
+```
+
+Antes do go-live:
+
+```bash
+npm run bff:migrate:postgres
+npm run bff:migrate:sqlite-to-postgres
+```
+
 ### Modo real com autenticação JWT habilitada
 
 `.env` adicional:
@@ -289,11 +323,15 @@ BFF_PERSISTENCE_MODE=memory
 | `ESL_SIGN` | Assinatura exigida pelo vendor | `***` |
 | `ESL_STORE_CODE` | Código da loja | `001` |
 | `ESL_IS_BASE64` | Flag vendor | `0` |
-| `BFF_PERSISTENCE_MODE` | `sqlite` ou `memory` | `sqlite` |
+| `BFF_PERSISTENCE_MODE` | `postgres`, `sqlite` ou `memory` | `postgres` |
+| `DATABASE_URL` | URL de conexão Postgres/Supabase | `postgresql://...` |
 | `BFF_DATA_DIR` | Diretório base local para banco/backup | `C:\\Users\\...\\AppData\\Local\\etiqueta_esl` |
 | `BFF_BACKUP_ENABLED` | Liga job de backup local | `true` |
 | `BFF_BACKUP_INTERVAL_MS` | Intervalo do backup automático | `86400000` |
 | `BFF_BACKUP_RETENTION_COUNT` | Quantidade de backups mantidos | `7` |
+| `BFF_SERVERLESS` | Ajusta runtime para serverless (Vercel) | `true` |
+| `CRON_SECRET` | Segredo das rotas de cron da Vercel | `***` |
+| `BFF_CRON_SECRET` | Alias local para segredo de cron | `***` |
 | `BFF_AUTH_ENABLED` | Ativa JWT/RBAC | `true` |
 | `ALLOWED_ORIGINS` | Origens permitidas no CORS (vírgula) | `http://localhost:5173` |
 | `JWT_ACCESS_SECRET` | Segredo access token | `***` |
@@ -312,6 +350,8 @@ BFF_PERSISTENCE_MODE=memory
 |---|---|
 | `npm run dev` | Frontend em desenvolvimento |
 | `npm run bff` | Inicia o BFF |
+| `npm run bff:migrate:postgres` | Aplica migrações versionadas no Postgres |
+| `npm run bff:migrate:sqlite-to-postgres` | Migra dados SQLite para Postgres/Supabase |
 | `npm run bff:restore` | Restaura banco SQLite de um backup local |
 | `npm run test:bff` | Testes Vitest/Supertest do BFF |
 | `npm run lint` | Lint do projeto |
@@ -328,6 +368,8 @@ Cobertura atual de automação do BFF (39 testes / 11 suites):
 - Login/refresh/logout com JWT.
 - RBAC com perfis `usuario`, `administrador` e `desenvolvedor`.
 - Persistência SQLite (repositórios e runtime).
+- Contrato de repositório Postgres (quando `TEST_POSTGRES_URL` está definido).
+- Migração SQLite -> Postgres (quando `TEST_POSTGRES_URL` está definido).
 - Backup local automático (retenção).
 - Restore CLI (sucesso e falha controlada).
 - `refreshService`: enqueue, trigger, race-condition, restauração de fila em falha.
@@ -356,6 +398,7 @@ Além das métricas de infraestrutura, o BFF expõe contadores de eventos de neg
 ## 13. Troubleshooting
 
 - `readyz` em `503`: verificar `ESL_*`, modo de persistência e segredos JWT (quando auth ativo).
+- Em Vercel, use `/api/healthz`, `/api/readyz` e `/api/metrics` (há rewrite para `/healthz`, `/readyz`, `/metrics`).
 - `401` em `/api/esl/*`: token ausente/inválido com `BFF_AUTH_ENABLED=true`.
 - `403` em `/api/esl/*`: perfil sem permissão para a rota.
 - `413` em POST: corpo JSON excede 1 MB. Reduza o payload.
@@ -371,6 +414,8 @@ Além das métricas de infraestrutura, o BFF expõe contadores de eventos de neg
 - Estabilização histórica: `docs/ESTABILIZACAO_2026-03-04.md`
 - Decisões de RBAC e painel admin: `docs/DECISOES_RBAC_E_PAINEL_ADMIN_2026-04-08.md`
 - Decisões do rebranding LiveLabel: `docs/DECISOES_REBRANDING_LIVELABEL_2026-04-08.md`
+- Guia de deploy cloud: `docs/DEPLOY_VERCEL_SUPABASE.md`
+- Decisão técnica da migração cloud: `docs/DECISOES_MIGRACAO_CLOUD_VERCEL_SUPABASE_2026-04-08.md`
 
 Observação de conectividade:
 
