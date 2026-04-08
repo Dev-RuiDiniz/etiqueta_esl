@@ -38,6 +38,10 @@ ESL_STORE_CODE=001
 ESL_IS_BASE64=0
 ```
 
+Observação importante:
+- Sem `DATABASE_URL`, o runtime serverless entra em fallback `memory` para não derrubar a API.
+- Para paridade cloud completa, valide em `GET /api/readyz` que `data.checks.persistence_mode` está como `postgres`.
+
 ## 4. Migração de schema e dados
 
 Aplicar migrações do schema Postgres:

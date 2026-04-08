@@ -400,6 +400,7 @@ Além das métricas de infraestrutura, o BFF expõe contadores de eventos de neg
 - `readyz` em `503`: verificar `ESL_*`, modo de persistência e segredos JWT (quando auth ativo).
 - Em Vercel, use `/api/healthz`, `/api/readyz` e `/api/metrics` (há rewrite para `/healthz`, `/readyz`, `/metrics`).
 - Em Vercel sem `DATABASE_URL`, o runtime entra em fallback `memory` (apenas contingência temporária); para produção real configure `BFF_PERSISTENCE_MODE=postgres` + `DATABASE_URL`.
+- Após configurar `DATABASE_URL`, confirme em `/api/readyz` que `data.checks.persistence_mode` retornou `postgres`.
 - `401` em `/api/esl/*`: token ausente/inválido com `BFF_AUTH_ENABLED=true`.
 - `403` em `/api/esl/*`: perfil sem permissão para a rota.
 - `413` em POST: corpo JSON excede 1 MB. Reduza o payload.
