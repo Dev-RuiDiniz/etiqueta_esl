@@ -40,6 +40,7 @@ export function loadConfig() {
     retryBaseDelayMs: Number(process.env.ESL_RETRY_BASE_DELAY_MS ?? 400),
 
     persistenceMode: (process.env.BFF_PERSISTENCE_MODE ?? 'sqlite').trim().toLowerCase(),
+    databaseUrl: (process.env.DATABASE_URL ?? '').trim(),
     dataDir: (process.env.BFF_DATA_DIR ?? '').trim(),
     backupEnabled: asBoolean(process.env.BFF_BACKUP_ENABLED, true),
     backupIntervalMs: asPositiveInt(process.env.BFF_BACKUP_INTERVAL_MS, 24 * 60 * 60 * 1000),
@@ -62,7 +63,9 @@ export function loadConfig() {
     logLevel: (process.env.LOG_LEVEL ?? 'info').trim().toLowerCase(),
 
     commandLogRetentionDays: Number(process.env.ESL_COMMAND_LOG_RETENTION_DAYS ?? 30),
-    deadLetterRetentionDays: Number(process.env.ESL_DEAD_LETTER_RETENTION_DAYS ?? 30)
+    deadLetterRetentionDays: Number(process.env.ESL_DEAD_LETTER_RETENTION_DAYS ?? 30),
+    serverless: asBoolean(process.env.BFF_SERVERLESS, false),
+    cronSecret: (process.env.BFF_CRON_SECRET ?? process.env.CRON_SECRET ?? '').trim()
   };
 }
 
@@ -116,9 +119,15 @@ export function assertAuthConfig(config) {
 }
 
 export function assertPersistenceConfig(config) {
-  if (config.persistenceMode !== 'sqlite' && config.persistenceMode !== 'memory') {
+  if (config.persistenceMode !== 'sqlite' && config.persistenceMode !== 'memory' && config.persistenceMode !== 'postgres') {
     const error = new Error(`Unsupported persistence mode: ${config.persistenceMode}`);
     error.code = 'PERSISTENCE_MODE_UNSUPPORTED';
+    throw error;
+  }
+
+  if (config.persistenceMode === 'postgres' && !config.databaseUrl) {
+    const error = new Error('DATABASE_URL is required when BFF_PERSISTENCE_MODE=postgres.');
+    error.code = 'PERSISTENCE_CONFIG_INVALID';
     throw error;
   }
 
