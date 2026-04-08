@@ -60,7 +60,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
   assertAuthConfig(config);
 
   const logger = createLogger(config);
-  const repositories = createRepositories(config);
+  const repositories = await createRepositories(config);
 
   // O runtime é montado em camadas para manter dependências explícitas:
   // repositórios -> serviços de domínio -> rotas -> jobs -> servidor HTTP.

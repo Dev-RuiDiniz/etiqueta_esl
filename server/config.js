@@ -143,7 +143,11 @@ export function assertPersistenceConfig(config) {
     throw error;
   }
 
-  if (config.persistenceMode === 'memory' && (process.env.NODE_ENV ?? '').trim().toLowerCase() === 'production') {
+  if (
+    config.persistenceMode === 'memory' &&
+    (process.env.NODE_ENV ?? '').trim().toLowerCase() === 'production' &&
+    !config.serverless
+  ) {
     const error = new Error('Memory persistence mode is restricted to development and tests.');
     error.code = 'PERSISTENCE_MODE_RESTRICTED';
     throw error;

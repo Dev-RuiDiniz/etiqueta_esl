@@ -1,14 +1,13 @@
 import { assertPersistenceConfig } from '../../config.js';
 import { createMemoryRepositories } from './memory.js';
-import { createPostgresRepositories } from './postgres.js';
-import { createSqliteRepositories } from './sqlite.js';
 
-export function createRepositories(config) {
+export async function createRepositories(config) {
   assertPersistenceConfig(config);
 
   const mode = config.persistenceMode;
 
   if (mode === 'sqlite') {
+    const { createSqliteRepositories } = await import('./sqlite.js');
     return createSqliteRepositories({
       dataDir: config.dataDir,
       backupRetentionCount: config.backupRetentionCount
@@ -20,6 +19,7 @@ export function createRepositories(config) {
   }
 
   if (mode === 'postgres') {
+    const { createPostgresRepositories } = await import('./postgres.js');
     return createPostgresRepositories({
       databaseUrl: config.databaseUrl
     });
