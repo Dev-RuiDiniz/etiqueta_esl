@@ -1,12 +1,5 @@
-import { clearTokens, getRefreshToken, setTokens } from '../lib/auth';
-
-type AuthUser = {
-  id: string;
-  email: string;
-  role: 'admin' | 'operador' | 'viewer';
-  created_at: string;
-  updated_at: string;
-};
+import { clearSession, getRefreshToken, setSession } from '../lib/auth';
+import type { AuthUser } from '../types/auth';
 
 type AuthTokenPair = {
   access_token: string;
@@ -55,7 +48,7 @@ export async function login(email: string, password: string): Promise<AuthTokenP
     throw new Error(parsed?.error_msg || 'Falha ao autenticar no BFF.');
   }
 
-  setTokens(parsed.data.access_token, parsed.data.refresh_token);
+  setSession(parsed.data.access_token, parsed.data.refresh_token, parsed.data.user);
   return parsed.data;
 }
 
@@ -63,7 +56,7 @@ export async function logout(): Promise<void> {
   const refreshToken = getRefreshToken();
 
   if (!refreshToken) {
-    clearTokens();
+    clearSession();
     return;
   }
 
@@ -77,6 +70,6 @@ export async function logout(): Promise<void> {
       body: JSON.stringify({ refresh_token: refreshToken })
     });
   } finally {
-    clearTokens();
+    clearSession();
   }
 }

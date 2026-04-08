@@ -6,8 +6,13 @@ import {
   verifyAccessToken
 } from './jwt.js';
 import { hashPassword, verifyPassword } from './password.js';
+import { USER_ROLES } from './rbac.js';
 
-const VALID_ROLES = new Set(['admin', 'operador', 'viewer']);
+const VALID_ROLES = new Set(USER_ROLES);
+
+function normalizeEmail(email) {
+  return String(email ?? '').trim().toLowerCase();
+}
 
 function sanitizeUser(user) {
   if (!user) {
@@ -32,7 +37,7 @@ export class AuthService {
   }
 
   async ensureDefaultAdmin() {
-    const existing = await this.userRepo.findByEmail(this.config.authDefaultAdminEmail);
+    const existing = await this.userRepo.findByEmail(normalizeEmail(this.config.authDefaultAdminEmail));
 
     if (existing) {
       return sanitizeUser(existing);
@@ -40,12 +45,12 @@ export class AuthService {
 
     const passwordHash = await hashPassword(this.config.authDefaultAdminPassword);
     const created = await this.userRepo.createUser({
-      email: this.config.authDefaultAdminEmail,
+      email: normalizeEmail(this.config.authDefaultAdminEmail),
       password_hash: passwordHash,
-      role: 'admin'
+      role: 'desenvolvedor'
     });
 
-    this.logger.info({ email: created.email }, 'Default admin user created');
+    this.logger.info({ email: created.email }, 'Default developer user created');
     return sanitizeUser(created);
   }
 
@@ -58,7 +63,7 @@ export class AuthService {
 
     const passwordHash = await hashPassword(password);
     const created = await this.userRepo.createUser({
-      email,
+      email: normalizeEmail(email),
       password_hash: passwordHash,
       role
     });
@@ -66,8 +71,61 @@ export class AuthService {
     return sanitizeUser(created);
   }
 
+  async listUsers({ limit = 100, search = '', role = null } = {}) {
+    const normalizedRole = role ? String(role).trim().toLowerCase() : null;
+    const normalizedSearch = normalizeEmail(search);
+    const users = await this.userRepo.listUsers(Math.max(1, Number(limit) || 100));
+
+    return users
+      .filter((user) => {
+        if (normalizedRole && user.role !== normalizedRole) {
+          return false;
+        }
+
+        if (normalizedSearch && !String(user.email).toLowerCase().includes(normalizedSearch)) {
+          return false;
+        }
+
+        return true;
+      })
+      .map((user) => sanitizeUser(user));
+  }
+
+  async getUserById(userId) {
+    return sanitizeUser(await this.userRepo.findById(userId));
+  }
+
+  async updateUser(userId, updates) {
+    if (updates.role && !VALID_ROLES.has(updates.role)) {
+      const error = new Error('Invalid role');
+      error.code = 'AUTH_INVALID_ROLE';
+      throw error;
+    }
+
+    const nextUpdates = {};
+
+    if (typeof updates.email !== 'undefined') {
+      nextUpdates.email = normalizeEmail(updates.email);
+    }
+
+    if (typeof updates.role !== 'undefined') {
+      nextUpdates.role = updates.role;
+    }
+
+    if (typeof updates.password !== 'undefined') {
+      nextUpdates.password_hash = await hashPassword(updates.password);
+    }
+
+    const updated = await this.userRepo.updateUser(userId, nextUpdates);
+    return sanitizeUser(updated);
+  }
+
+  async revokeAllSessionsByUserId(userId) {
+    return this.refreshTokenRepo.revokeAllByUserId(userId);
+  }
+
   async login({ email, password }) {
-    const user = await this.userRepo.findByEmail(email);
+    const user = await this.userRepo.findByEmail(normalizeEmail(email));
 
     if (!user) {
       const error = new Error('Invalid credentials.');

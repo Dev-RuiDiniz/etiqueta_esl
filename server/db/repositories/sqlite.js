@@ -474,6 +474,9 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
   );
   const revokeRefreshTokenStmt = db.prepare('UPDATE refresh_tokens SET revoked = 1, revoked_at = ? WHERE token_hash = ?');
   const revokeAllRefreshTokensStmt = db.prepare('UPDATE refresh_tokens SET revoked = 1, revoked_at = ? WHERE user_id = ? AND revoked = 0');
+  const listActiveRefreshUserIdsStmt = db.prepare(
+    'SELECT DISTINCT user_id FROM refresh_tokens WHERE revoked = 0 AND expires_at > ?'
+  );
 
   const upsertStatusTxn = db.transaction((snapshots) => {
     const seenAt = nowIso();
@@ -830,6 +833,11 @@ export function createSqliteRepositories({ dataDir = '', backupRetentionCount = 
     async revokeAllByUserId(userId) {
       const info = revokeAllRefreshTokensStmt.run(nowIso(), userId);
       return toSafeInteger(info.changes, 0);
+    },
+
+    async listActiveUserIds(referenceDate = new Date()) {
+      const rows = listActiveRefreshUserIdsStmt.all(referenceDate.toISOString());
+      return new Set(rows.map((row) => row.user_id));
     }
   };
 

@@ -316,6 +316,14 @@ export function createMemoryRepositories() {
         return null;
       }
 
+      const nextEmail = updates.email ?? existing.email;
+
+      if (nextEmail !== existing.email && usersByEmail.has(nextEmail)) {
+        const error = new Error('User email already exists.');
+        error.code = 'USER_DUPLICATE_EMAIL';
+        throw error;
+      }
+
       const next = {
         ...existing,
         ...updates,
@@ -323,6 +331,9 @@ export function createMemoryRepositories() {
       };
 
       usersById.set(userId, next);
+      if (next.email !== existing.email) {
+        usersByEmail.delete(existing.email);
+      }
       usersByEmail.set(next.email, userId);
       return next;
     },
@@ -398,6 +409,20 @@ export function createMemoryRepositories() {
       }
 
       return count;
+    },
+
+    async listActiveUserIds(referenceDate = new Date()) {
+      const referenceTime = referenceDate.getTime();
+      const userIds = new Set();
+
+      for (const token of refreshTokensByHash.values()) {
+        const expiresAt = new Date(token.expires_at).getTime();
+        if (token.revoked !== true && Number.isFinite(expiresAt) && expiresAt > referenceTime) {
+          userIds.add(token.user_id);
+        }
+      }
+
+      return userIds;
     }
   };
 

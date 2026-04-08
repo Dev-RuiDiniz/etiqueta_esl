@@ -1,10 +1,11 @@
-import { clearTokens, getAccessToken, getRefreshToken, redirectToLogin, setTokens } from '../../lib/auth';
+import { clearSession, getAccessToken, getRefreshToken, redirectToLogin, setSession } from '../../lib/auth';
 import type { EslCommandResult } from '../../types/esl';
 
 const ESL_BFF_BASE = import.meta.env.VITE_ESL_BFF_BASE ?? '/api/esl';
+const ADMIN_BFF_BASE = '/api/admin';
 
-function joinPath(path: string) {
-  const base = ESL_BFF_BASE.endsWith('/') ? ESL_BFF_BASE.slice(0, -1) : ESL_BFF_BASE;
+function joinPath(basePath: string, path: string) {
+  const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
   const suffix = path.startsWith('/') ? path : `/${path}`;
   return `${base}${suffix}`;
 }
@@ -44,21 +45,21 @@ async function tryRefreshToken(): Promise<boolean> {
     const parsed = await parseJson(res);
     if (!parsed?.data?.access_token) return false;
 
-    setTokens(parsed.data.access_token, parsed.data.refresh_token ?? refreshToken);
+    setSession(parsed.data.access_token, parsed.data.refresh_token ?? refreshToken, parsed.data.user ?? null);
     return true;
   } catch {
     return false;
   }
 }
 
-export async function eslRequest<TData>(path: string, init?: RequestInit): Promise<EslCommandResult<TData>> {
+export async function bffRequest<TData>(basePath: string, path: string, init?: RequestInit): Promise<EslCommandResult<TData>> {
   // Cliente frontend → BFF (nunca chama fornecedor direto no navegador).
   // Inclui Bearer token se disponível; faz refresh automático em 401.
   // Se a sessão não puder ser renovada, o usuário é levado à tela de login.
   const requestId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
 
   const doFetch = (extraHeaders: HeadersInit = {}) =>
-    fetch(joinPath(path), {
+    fetch(joinPath(basePath, path), {
       ...init,
       headers: {
         Accept: 'application/json',
@@ -77,7 +78,7 @@ export async function eslRequest<TData>(path: string, init?: RequestInit): Promi
     if (refreshed) {
       response = await doFetch();
     } else {
-      clearTokens();
+      clearSession();
       redirectToLogin(`${window.location.pathname}${window.location.search}`);
       throw new Error('Sessão expirada. Faça login novamente.');
     }
@@ -136,6 +137,10 @@ export async function eslRequest<TData>(path: string, init?: RequestInit): Promi
   return parsed as EslCommandResult<TData>;
 }
 
+export async function eslRequest<TData>(path: string, init?: RequestInit): Promise<EslCommandResult<TData>> {
+  return bffRequest<TData>(ESL_BFF_BASE, path, init);
+}
+
 export async function eslGet<TData>(path: string): Promise<EslCommandResult<TData>> {
   return eslRequest<TData>(path, {
     method: 'GET'
@@ -159,5 +164,23 @@ export async function eslPatch<TData, TBody>(path: string, body: TBody): Promise
 export async function eslDelete<TData>(path: string): Promise<EslCommandResult<TData>> {
   return eslRequest<TData>(path, {
     method: 'DELETE'
+  });
+}
+
+export async function adminGet<TData>(path: string): Promise<EslCommandResult<TData>> {
+  return bffRequest<TData>(ADMIN_BFF_BASE, path, { method: 'GET' });
+}
+
+export async function adminPost<TData, TBody>(path: string, body: TBody): Promise<EslCommandResult<TData>> {
+  return bffRequest<TData>(ADMIN_BFF_BASE, path, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+}
+
+export async function adminPatch<TData, TBody>(path: string, body: TBody): Promise<EslCommandResult<TData>> {
+  return bffRequest<TData>(ADMIN_BFF_BASE, path, {
+    method: 'PATCH',
+    body: JSON.stringify(body)
   });
 }

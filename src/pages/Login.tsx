@@ -32,9 +32,9 @@ function Login() {
       <section className="login-card card border-0 shadow-lg">
         <div className="card-body p-4 p-md-5">
           <span className="badge text-bg-primary mb-3">BFF Auth</span>
-          <h1 className="h3 mb-2">Entrar no Painel ESL</h1>
+          <h1 className="h3 mb-2">Entrar na Central ESL</h1>
           <p className="text-muted mb-4">
-            Use as credenciais do BFF quando `BFF_AUTH_ENABLED=true`. Em ambientes sem autenticação, esta tela pode ser ignorada.
+            Use as credenciais do BFF quando `BFF_AUTH_ENABLED=true`. Os perfis `usuario`, `administrador` e `desenvolvedor` recebem experiências diferentes dentro do painel.
           </p>
 
           <form onSubmit={handleSubmit}>

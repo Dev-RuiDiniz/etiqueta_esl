@@ -1,5 +1,5 @@
 import { ChangeEvent } from 'react';
-import { hasActiveSession } from '../lib/auth';
+import { getEffectiveUser, hasActiveSession } from '../lib/auth';
 import { useNavigate } from '../lib/router';
 import { syncStatus, type Store } from '../mocks';
 import { logout } from '../services/authService';
@@ -15,6 +15,7 @@ function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarPr
   const navigate = useNavigate();
   const currentStore = stores.find((store) => store.id === selectedStoreId);
   const sessionActive = hasActiveSession();
+  const currentUser = getEffectiveUser();
 
   const handleStoreChange = (event: ChangeEvent<HTMLSelectElement>) => {
     onStoreChange(event.target.value);
@@ -26,14 +27,14 @@ function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarPr
   };
 
   return (
-    <header className="topbar bg-white border-bottom px-3 px-lg-4 py-3 d-flex align-items-center justify-content-between gap-3">
+    <header className="topbar app-surface px-3 px-lg-4 py-3 d-flex align-items-center justify-content-between gap-3">
       <div className="d-flex align-items-center gap-3">
-        <button className="btn btn-outline-secondary d-lg-none" onClick={onOpenMenu} type="button">
+        <button className="btn btn-outline-secondary d-lg-none topbar-menu-button" onClick={onOpenMenu} type="button">
           ☰ <span className="ms-1">Menu</span>
         </button>
 
         <div>
-          <p className="text-muted small mb-1">Operação</p>
+          <p className="text-muted small mb-1">Operação em tempo real</p>
           <h1 className="h5 mb-0">{currentStore?.name ?? 'Painel de Etiquetas'}</h1>
         </div>
       </div>
@@ -51,11 +52,18 @@ function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarPr
         </label>
 
         <div className="text-end">
-          <span className={`badge ${syncStatus.online ? 'text-bg-success' : 'text-bg-secondary'}`}>
+          <span className={`badge rounded-pill ${syncStatus.online ? 'text-bg-success' : 'text-bg-secondary'}`}>
             {syncStatus.online ? 'Online' : 'Offline'}
           </span>
           <p className="small text-muted mb-0 mt-1">{syncStatus.lastSyncText}</p>
         </div>
+
+        {currentUser ? (
+          <div className="topbar-user text-end">
+            <p className="small fw-semibold mb-0">{currentUser.email}</p>
+            <p className="small text-muted mb-0 text-capitalize">{currentUser.role}</p>
+          </div>
+        ) : null}
 
         {sessionActive ? (
           <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void handleLogout()}>

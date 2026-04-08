@@ -79,29 +79,120 @@ describe('Auth JWT + RBAC', () => {
     expect(protectedResponse.body.success).toBe(true);
   });
 
-  it('retorna 403 para viewer em rota POST de operação', async () => {
+  it('permite usuario executar rota POST operacional', async () => {
     const ctx = await createAuthContext();
 
     await ctx.runtime.services.authService.createUser({
-      email: 'viewer@local.test',
-      password: 'Viewer@123',
-      role: 'viewer'
+      email: 'usuario@local.test',
+      password: 'Usuario@123',
+      role: 'usuario'
     });
 
     const loginViewer = await ctx.request.post('/api/auth/login').send({
-      email: 'viewer@local.test',
-      password: 'Viewer@123'
+      email: 'usuario@local.test',
+      password: 'Usuario@123'
     });
 
     const viewerToken = loginViewer.body.data.access_token;
 
-    const forbiddenResponse = await ctx.request
-      .post('/api/esl/status/sync')
+    const allowedResponse = await ctx.request
+      .post('/api/esl/catalog')
       .set('Authorization', `Bearer ${viewerToken}`)
-      .send({});
+      .send({
+        esl_code: 'ESL-1001',
+        display_name: 'Gondola A'
+      });
+
+    expect(allowedResponse.status).toBe(200);
+  });
+
+  it('retorna 403 para administrador em rota sensível exclusiva de desenvolvedor', async () => {
+    const ctx = await createAuthContext();
+
+    await ctx.runtime.services.authService.createUser({
+      email: 'gestor-sensivel@local.test',
+      password: 'AdminLocal@123',
+      role: 'administrador'
+    });
+
+    const loginAdmin = await ctx.request.post('/api/auth/login').send({
+      email: 'gestor-sensivel@local.test',
+      password: 'AdminLocal@123'
+    });
+
+    const adminToken = loginAdmin.body.data.access_token;
+
+    const forbiddenResponse = await ctx.request
+      .get('/api/esl/dead-letters')
+      .set('Authorization', `Bearer ${adminToken}`);
 
     expect(forbiddenResponse.status).toBe(403);
     expect(forbiddenResponse.body.data.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('permite administrador acessar dashboard admin e gerenciar usuário comum', async () => {
+    const ctx = await createAuthContext();
+
+    await ctx.runtime.services.authService.createUser({
+      email: 'gestor@local.test',
+      password: 'Gestor@123',
+      role: 'administrador'
+    });
+
+    const loginAdmin = await ctx.request.post('/api/auth/login').send({
+      email: 'gestor@local.test',
+      password: 'Gestor@123'
+    });
+
+    const adminToken = loginAdmin.body.data.access_token;
+
+    const dashboardResponse = await ctx.request
+      .get('/api/admin/dashboard')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(dashboardResponse.status).toBe(200);
+    expect(dashboardResponse.body.data.users.by_role.administrador).toBeGreaterThanOrEqual(1);
+
+    const createUserResponse = await ctx.request
+      .post('/api/admin/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: 'operacao@local.test',
+        password: 'Operacao@123',
+        role: 'usuario'
+      });
+
+    expect(createUserResponse.status).toBe(200);
+    expect(createUserResponse.body.data.role).toBe('usuario');
+  });
+
+  it('bloqueia administrador ao criar usuário desenvolvedor', async () => {
+    const ctx = await createAuthContext();
+
+    await ctx.runtime.services.authService.createUser({
+      email: 'gestor2@local.test',
+      password: 'Gestor@123',
+      role: 'administrador'
+    });
+
+    const loginAdmin = await ctx.request.post('/api/auth/login').send({
+      email: 'gestor2@local.test',
+      password: 'Gestor@123'
+    });
+
+    const adminToken = loginAdmin.body.data.access_token;
+
+    const response = await ctx.request
+      .post('/api/admin/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: 'root@local.test',
+        password: 'Root@12345',
+        role: 'desenvolvedor'
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body.data.code).toBe('AUTH_FORBIDDEN_ROLE_ASSIGNMENT');
   });
 
   it('executa refresh e logout com refresh token', async () => {

@@ -1,5 +1,7 @@
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
+import { createAdminRoutes } from './admin/routes.js';
+import { AdminService } from './admin/service.js';
 import { assertAuthConfig, getMissingEslConfig, loadConfig } from './config.js';
 import { AuthService } from './auth/service.js';
 import { createAuthRoutes } from './auth/routes.js';
@@ -135,6 +137,15 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
 
   await authService.ensureDefaultAdmin();
 
+  const adminService = new AdminService({
+    authService,
+    refreshTokenRepo: repositories.refreshTokenRepo,
+    deadLetterRepo: repositories.deadLetterRepo,
+    catalogService,
+    templateService,
+    statusService
+  });
+
   async function runJobsOnce() {
     // Execução manual útil para troubleshooting e smoke test operacional.
     const productSync = await productSyncService.flushPendingUpserts(50);
@@ -164,6 +175,7 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
   });
 
   const authRoute = createAuthRoutes({ authService });
+  const adminRoute = createAdminRoutes({ adminService });
 
   async function probeVendorHealth() {
     if (getMissingEslConfig(config).length > 0) {
@@ -470,6 +482,11 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
 
       req.user = await authorizeRequest(req, url.pathname, config, authService);
 
+      const adminHandled = await adminRoute(req, res, url, body);
+      if (adminHandled) {
+        return;
+      }
+
       const handled = await eslRoute(req, res, url, body);
       if (handled) {
         return;
@@ -507,7 +524,8 @@ export async function createBffRuntime({ configOverrides = {} } = {}) {
       templateService,
       ledService,
       catalogService,
-      authService
+      authService,
+      adminService
     },
     startJobs,
     stopAll,

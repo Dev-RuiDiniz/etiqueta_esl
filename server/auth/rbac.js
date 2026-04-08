@@ -1,26 +1,44 @@
-const READ_ROLES = ['viewer', 'operador', 'admin'];
-const WRITE_ROLES = ['operador', 'admin'];
-const ADMIN_ROLES = ['admin'];
+export const USER_ROLES = ['usuario', 'administrador', 'desenvolvedor'];
+
+const ESL_READ_ROLES = USER_ROLES;
+const ESL_WRITE_ROLES = USER_ROLES;
+const USER_ADMIN_ROLES = ['administrador', 'desenvolvedor'];
+const SUPER_ADMIN_ROLES = ['desenvolvedor'];
 
 export function resolveRequiredRoles(method, pathname) {
+  if (pathname.startsWith('/api/admin/')) {
+    if (pathname === '/api/admin/dashboard' || pathname === '/api/admin/users') {
+      return USER_ADMIN_ROLES;
+    }
+
+    if (
+      /^\/api\/admin\/users\/[^/]+\/(reset-password|revoke-sessions)$/.test(pathname) ||
+      /^\/api\/admin\/users\/[^/]+$/.test(pathname)
+    ) {
+      return USER_ADMIN_ROLES;
+    }
+
+    return SUPER_ADMIN_ROLES;
+  }
+
   // Regras mínimas por endpoint crítico. O restante cai em GET=leitura / mutação=escrita.
   if (pathname === '/api/esl/jobs/run') {
-    return ADMIN_ROLES;
+    return SUPER_ADMIN_ROLES;
   }
 
   if (pathname === '/api/esl/dead-letters') {
-    return ADMIN_ROLES;
+    return SUPER_ADMIN_ROLES;
   }
 
   if (pathname === '/api/esl/audit') {
-    return ['operador', 'admin'];
+    return SUPER_ADMIN_ROLES;
   }
 
   if (method === 'GET') {
-    return READ_ROLES;
+    return ESL_READ_ROLES;
   }
 
-  return WRITE_ROLES;
+  return ESL_WRITE_ROLES;
 }
 
 export function isRoleAllowed(role, allowedRoles) {
