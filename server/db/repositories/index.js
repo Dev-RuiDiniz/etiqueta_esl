@@ -1,5 +1,6 @@
 import { assertPersistenceConfig } from '../../config.js';
 import { createMemoryRepositories } from './memory.js';
+import { createPostgresRepositories } from './postgres.js';
 import { createSqliteRepositories } from './sqlite.js';
 
 export function createRepositories(config) {
@@ -16,6 +17,12 @@ export function createRepositories(config) {
 
   if (mode === 'memory') {
     return createMemoryRepositories();
+  }
+
+  if (mode === 'postgres') {
+    return createPostgresRepositories({
+      databaseUrl: config.databaseUrl
+    });
   }
 
   const error = new Error(`Unsupported persistence mode: ${mode}`);
