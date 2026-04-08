@@ -1,8 +1,22 @@
-# Etiqueta ESL — Plataforma de Operação e Integração GreenDisplay
+# LiveLabel — Etiquetas Digitais Sustentáveis
 
-Sistema para operação de etiquetas eletrônicas de prateleira (ESL), com frontend React e BFF Node.js. O projeto suporta modo `mock` para demonstração e modo `real` com integração completa à API ESL do fornecedor.
+Plataforma LiveLabel para operação de etiquetas digitais sustentáveis, com frontend React + Vite, BFF Node.js e integração com a API ESL do fornecedor. O nome técnico do repositório continua `etiqueta_esl`, mas a experiência pública do produto, a interface e a documentação funcional adotam a marca `LiveLabel`.
 
-## 1. O que o sistema faz
+## 1. Branding e design system
+
+- Marca pública: `LiveLabel`
+- Assinatura: `Etiquetas Digitais Sustentáveis`
+- Direção visual: `light + dark shell`, com shell escuro, superfícies claras e linguagem operacional B2B.
+- Fontes oficiais: `Plus Jakarta Sans` e `JetBrains Mono`
+- Paleta principal: verde e azul alinhados ao logo oficial
+
+Assets versionados no repositório:
+
+- Logo oficial: `src/assets/brand/livelabel-logo.jpg`
+- Favicon derivado do logo: `public/livelabel-logo.jpg`
+- Guia de design incorporado: `docs/brand/livelabel-design-system.md`
+
+## 2. O que o sistema faz
 
 - Monitoramento de etiquetas (`online/offline`, bateria, AP, vínculo de produto).
 - Atualização de preço individual e em lote (CSV com BOM detection, limite 2 MB / 5000 linhas).
@@ -14,9 +28,9 @@ Sistema para operação de etiquetas eletrônicas de prateleira (ESL), com front
 - Dashboard de KPIs em tempo real (online, offline, bateria baixa, offline por corredor).
 - Catálogo de produtos com persistência SQLite e upload CSV.
 - Alertas derivados de snapshots e dead-letter (OFFLINE, LOW_BATTERY, UPDATE_FAILED).
-- Central administrativa com acompanhamento de usuários, base stations, templates e falhas pendentes.
+- Cockpit administrativo com acompanhamento de usuários, base stations, templates e falhas pendentes.
 
-## 2. Arquitetura resumida
+## 3. Arquitetura resumida
 
 ```mermaid
 flowchart LR
@@ -28,11 +42,12 @@ E --> F[ESL Tags]
 F --> E --> D --> C --> B --> A
 ```
 
-## 3. Como o sistema funciona
+## 4. Como o sistema funciona
 
 ### Frontend
 
 - Stack: React 18 + Vite 6 + TypeScript.
+- Tema e tokens centralizados em `src/styles/theme.css`, refletindo o design system LiveLabel.
 - Camada ESL em `src/services/esl/*`.
 - Camada administrativa em `src/services/adminService.ts`.
 - Tipos de contrato em `src/types/esl.ts`.
@@ -51,7 +66,7 @@ F --> E --> D --> C --> B --> A
 - Jobs: `server/jobs/*`.
 - Observabilidade: `server/observability/*`.
 
-## 4. Endpoints do BFF
+## 5. Endpoints do BFF
 
 ### Operação ESL (`/api/esl/*`)
 
@@ -98,7 +113,7 @@ F --> E --> D --> C --> B --> A
 | GET | `/readyz` | Readiness (config + DB + auth + vendor) |
 | GET | `/metrics` | Métricas Prometheus |
 
-## 5. Persistência local e backup
+## 6. Persistência local e backup
 
 Modo configurável por `BFF_PERSISTENCE_MODE`:
 
@@ -138,7 +153,7 @@ Com `--yes`, pula confirmação interativa:
 npm run bff:restore -- <caminho-do-backup.sqlite> --yes
 ```
 
-## 6. Segurança (JWT + RBAC)
+## 7. Segurança (JWT + RBAC)
 
 Quando `BFF_AUTH_ENABLED=true`, rotas `/api/esl/*` exigem bearer token.
 
@@ -166,7 +181,7 @@ Importante:
 - Usuário padrão é criado no startup (`BFF_DEFAULT_ADMIN_EMAIL` e `BFF_DEFAULT_ADMIN_PASSWORD`) com papel `desenvolvedor`.
 - Em produção, altere segredos JWT e senha padrão antes do go-live.
 
-## 7. Quickstart
+## 8. Quickstart
 
 ### Pré-requisitos
 
@@ -257,7 +272,7 @@ Com auth habilitada:
 BFF_PERSISTENCE_MODE=memory
 ```
 
-## 8. Variáveis de ambiente
+## 9. Variáveis de ambiente
 
 | Variável | Finalidade | Exemplo |
 |---|---|---|
@@ -291,7 +306,7 @@ BFF_PERSISTENCE_MODE=memory
 | `ESL_COMMAND_LOG_RETENTION_DAYS` | Retenção de auditoria | `30` |
 | `ESL_DEAD_LETTER_RETENTION_DAYS` | Retenção de dead-letter | `30` |
 
-## 9. Scripts
+## 10. Scripts
 
 | Comando | Uso |
 |---|---|
@@ -305,7 +320,7 @@ BFF_PERSISTENCE_MODE=memory
 | `npm run format` | Formatação automática |
 | `npm run format:check` | Validação de formatação |
 
-## 10. Testes
+## 11. Testes
 
 Cobertura atual de automação do BFF (39 testes / 11 suites):
 
@@ -328,7 +343,7 @@ Execução:
 npm run test:bff
 ```
 
-## 11. Métricas Prometheus
+## 12. Métricas Prometheus
 
 Além das métricas de infraestrutura, o BFF expõe contadores de eventos de negócio em `/metrics`:
 
@@ -338,7 +353,7 @@ Além das métricas de infraestrutura, o BFF expõe contadores de eventos de neg
 | `esl_bff_tags_bound_total` | `result` (success/failure) | Bindings realizados |
 | `esl_bff_refreshes_triggered_total` | `result` (success/failure) | Refreshes disparados |
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
 - `readyz` em `503`: verificar `ESL_*`, modo de persistência e segredos JWT (quando auth ativo).
 - `401` em `/api/esl/*`: token ausente/inválido com `BFF_AUTH_ENABLED=true`.
@@ -348,13 +363,14 @@ Além das métricas de infraestrutura, o BFF expõe contadores de eventos de neg
 - `429` em `/api/auth/login`: rate limit excedido (10/IP/15 min). Aguardar `Retry-After` segundos.
 - Falha de restore: confirmar caminho do arquivo e integridade do backup SQLite.
 
-## 13. Documentação complementar
+## 14. Documentação complementar
 
 - Documento técnico detalhado: `docs/SISTEMA_E_INTEGRACAO_ESL.md`
 - Manual operacional do cliente: `docs/MANUAL_EXECUCAO_CLIENTE.md`
 - Checklist de demo: `docs/DEMO_CHECKLIST.md`
 - Estabilização histórica: `docs/ESTABILIZACAO_2026-03-04.md`
 - Decisões de RBAC e painel admin: `docs/DECISOES_RBAC_E_PAINEL_ADMIN_2026-04-08.md`
+- Decisões do rebranding LiveLabel: `docs/DECISOES_REBRANDING_LIVELABEL_2026-04-08.md`
 
 Observação de conectividade:
 
