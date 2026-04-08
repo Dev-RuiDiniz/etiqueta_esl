@@ -14,6 +14,7 @@ Sistema para operação de etiquetas eletrônicas de prateleira (ESL), com front
 - Dashboard de KPIs em tempo real (online, offline, bateria baixa, offline por corredor).
 - Catálogo de produtos com persistência SQLite e upload CSV.
 - Alertas derivados de snapshots e dead-letter (OFFLINE, LOW_BATTERY, UPDATE_FAILED).
+- Central administrativa com acompanhamento de usuários, base stations, templates e falhas pendentes.
 
 ## 2. Arquitetura resumida
 
@@ -33,9 +34,10 @@ F --> E --> D --> C --> B --> A
 
 - Stack: React 18 + Vite 6 + TypeScript.
 - Camada ESL em `src/services/esl/*`.
+- Camada administrativa em `src/services/adminService.ts`.
 - Tipos de contrato em `src/types/esl.ts`.
 - Polling operacional em `src/hooks/useEslStatus.ts`.
-- Sessão JWT em `src/lib/auth.ts` (localStorage), tela `/login` e auto-refresh em `src/services/esl/apiClient.ts`.
+- Sessão JWT em `src/lib/auth.ts` (localStorage), tela `/login`, persistência do perfil atual e auto-refresh em `src/services/esl/apiClient.ts`.
 - Upload CSV em `src/components/BulkUpdateUploader.tsx`; parse/validação em `src/utils/csv.ts`.
 
 ### BFF
@@ -86,6 +88,12 @@ F --> E --> D --> C --> B --> A
 | POST | `/api/auth/login` | Emite access/refresh token |
 | POST | `/api/auth/refresh` | Renova token |
 | POST | `/api/auth/logout` | Revoga refresh token |
+| GET | `/api/admin/dashboard` | Dashboard administrativo agregado |
+| GET | `/api/admin/users` | Lista usuários |
+| POST | `/api/admin/users` | Cria usuário |
+| PATCH | `/api/admin/users/:id` | Atualiza e-mail/perfil |
+| POST | `/api/admin/users/:id/reset-password` | Redefine senha e revoga sessões |
+| POST | `/api/admin/users/:id/revoke-sessions` | Revoga sessões ativas |
 | GET | `/healthz` | Liveness do processo |
 | GET | `/readyz` | Readiness (config + DB + auth + vendor) |
 | GET | `/metrics` | Métricas Prometheus |
@@ -134,11 +142,17 @@ npm run bff:restore -- <caminho-do-backup.sqlite> --yes
 
 Quando `BFF_AUTH_ENABLED=true`, rotas `/api/esl/*` exigem bearer token.
 
-Perfis:
+Perfis oficiais:
 
-- `admin`: acesso total, incluindo `/api/esl/jobs/run` e `/api/esl/dead-letters`.
-- `operador`: operações de negócio e monitoramento.
-- `viewer`: leitura (`GET`) somente.
+- `usuario`: operação diária, monitoramento e mutações operacionais em `/api/esl/*`.
+- `administrador`: tudo que `usuario` faz + acesso à área `/api/admin/*` para gestão de usuários comuns.
+- `desenvolvedor`: super administrador com acesso total, incluindo `/api/esl/jobs/run`, `/api/esl/dead-letters` e auditoria completa.
+
+Regras importantes:
+
+- `administrador` não pode criar, promover ou editar contas `desenvolvedor`.
+- redefinição de senha e troca de papel revogam sessões ativas do usuário-alvo.
+- a UI esconde módulos administrativos para perfis sem acesso, mas a proteção final continua no backend.
 
 Proteções adicionais:
 
@@ -149,7 +163,7 @@ Proteções adicionais:
 
 Importante:
 
-- Usuário admin padrão é criado no startup (`BFF_DEFAULT_ADMIN_EMAIL` e `BFF_DEFAULT_ADMIN_PASSWORD`).
+- Usuário padrão é criado no startup (`BFF_DEFAULT_ADMIN_EMAIL` e `BFF_DEFAULT_ADMIN_PASSWORD`) com papel `desenvolvedor`.
 - Em produção, altere segredos JWT e senha padrão antes do go-live.
 
 ## 7. Quickstart
@@ -232,6 +246,7 @@ Com auth habilitada:
 
 - a UI expõe a rota `/login`
 - o frontend usa `/api/auth/login`, `/api/auth/refresh` e `/api/auth/logout`
+- o frontend expõe `/admin` e `/admin/usuarios` para `administrador` e `desenvolvedor`
 - o operador volta automaticamente para a tela de login quando a sessão expira
 
 ### Modo memória (apenas dev/testes)
@@ -292,10 +307,11 @@ BFF_PERSISTENCE_MODE=memory
 
 ## 10. Testes
 
-Cobertura atual de automação do BFF (35 testes / 10 suites):
+Cobertura atual de automação do BFF (39 testes / 11 suites):
 
 - Contrato de resposta e comportamento base.
 - Login/refresh/logout com JWT.
+- RBAC com perfis `usuario`, `administrador` e `desenvolvedor`.
 - Persistência SQLite (repositórios e runtime).
 - Backup local automático (retenção).
 - Restore CLI (sucesso e falha controlada).
@@ -304,6 +320,7 @@ Cobertura atual de automação do BFF (35 testes / 10 suites):
 - `statusService`: queryCount, cache summary, dashboard aggregate, snapshot persistence.
 - Workflow E2E: produto → bind → refresh → dashboard → alertas → histórico.
 - Validação de input: 422 em bind e upsert com dados inválidos.
+- Gestão de usuários com reset de senha, revogação de sessões e proteção das rotas `/api/admin/*`.
 
 Execução:
 
@@ -337,6 +354,7 @@ Além das métricas de infraestrutura, o BFF expõe contadores de eventos de neg
 - Manual operacional do cliente: `docs/MANUAL_EXECUCAO_CLIENTE.md`
 - Checklist de demo: `docs/DEMO_CHECKLIST.md`
 - Estabilização histórica: `docs/ESTABILIZACAO_2026-03-04.md`
+- Decisões de RBAC e painel admin: `docs/DECISOES_RBAC_E_PAINEL_ADMIN_2026-04-08.md`
 
 Observação de conectividade:
 
