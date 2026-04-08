@@ -2,6 +2,34 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/api/auth/(.*)",
+      "destination": "/api/entry?__path=/api/auth/$1"
+    },
+    {
+      "source": "/api/admin/(.*)",
+      "destination": "/api/entry?__path=/api/admin/$1"
+    },
+    {
+      "source": "/api/esl/(.*)",
+      "destination": "/api/entry?__path=/api/esl/$1"
+    },
+    {
+      "source": "/api/internal/(.*)",
+      "destination": "/api/entry?__path=/api/internal/$1"
+    },
+    {
+      "source": "/api/healthz",
+      "destination": "/api/entry?__path=/api/healthz"
+    },
+    {
+      "source": "/api/readyz",
+      "destination": "/api/entry?__path=/api/readyz"
+    },
+    {
+      "source": "/api/metrics",
+      "destination": "/api/entry?__path=/api/metrics"
+    },
+    {
       "source": "/healthz",
       "destination": "/api/healthz"
     },
@@ -16,27 +44,7 @@
   ],
   "crons": [
     {
-      "path": "/api/internal/cron/product-sync",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/internal/cron/refresh-dispatch",
-      "schedule": "*/2 * * * *"
-    },
-    {
-      "path": "/api/internal/cron/status-poll",
-      "schedule": "*/2 * * * *"
-    },
-    {
-      "path": "/api/internal/cron/reconciliation",
-      "schedule": "*/10 * * * *"
-    },
-    {
-      "path": "/api/internal/cron/dead-letter",
-      "schedule": "*/10 * * * *"
-    },
-    {
-      "path": "/api/internal/cron/retention",
+      "path": "/api/internal/cron/all",
       "schedule": "0 3 * * *"
     }
   ]
