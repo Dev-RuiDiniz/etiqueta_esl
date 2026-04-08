@@ -101,8 +101,8 @@ function AdminUsers() {
       <header className="page-header mb-4">
         <div>
           <span className="eyebrow">Administração</span>
-          <h1 className="h3 mb-1">Gestão de usuários</h1>
-          <p className="text-muted mb-0">Crie contas, ajuste papéis e force renovação de sessão quando necessário.</p>
+          <h1 className="h3 mb-1">Gestão de identidades LiveLabel</h1>
+          <p className="text-muted mb-0">Crie contas, ajuste papéis e preserve a segurança da operação com renovação controlada de sessão.</p>
         </div>
       </header>
 
@@ -159,7 +159,7 @@ function AdminUsers() {
             </form>
 
             {feedback ? (
-              <div className={`alert mt-3 mb-0 ${feedback.ok ? 'alert-success' : 'alert-danger'}`} role="alert">
+              <div className={`mt-3 mb-0 ${feedback.ok ? 'app-alert app-alert--success' : 'app-alert app-alert--danger'}`} role="alert">
                 {feedback.text}
               </div>
             ) : null}

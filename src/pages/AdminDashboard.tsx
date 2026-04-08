@@ -15,14 +15,14 @@ function AdminDashboard() {
       <header className="page-header mb-4">
         <div>
           <span className="eyebrow">Administração</span>
-          <h1 className="h3 mb-1">Central de usuários e infraestrutura ESL</h1>
-          <p className="text-muted mb-0">Acompanhe perfis, estações, templates e sinais operacionais em um único painel.</p>
+          <h1 className="h3 mb-1">Cockpit LiveLabel de usuários e infraestrutura</h1>
+          <p className="text-muted mb-0">Acompanhe perfis, estações, templates e sinais operacionais em um único cockpit de marca.</p>
         </div>
       </header>
 
       {error ? (
         <ErrorState
-          title="Não foi possível carregar a central administrativa"
+          title="Não foi possível carregar o cockpit administrativo"
           message="Atualize a página para tentar novamente."
           onRetry={() => {
             void run();
@@ -36,16 +36,16 @@ function AdminDashboard() {
         <>
           <section className="row g-3 mb-4">
             <div className="col-12 col-sm-6 col-xl-3">
-              <KpiCard title="Usuários ativos" value={data.users.active} helperText={`${data.users.total} cadastrados`} icon="👥" />
+              <KpiCard title="Usuários ativos" value={data.users.active} helperText={`${data.users.total} cadastrados`} icon="users" />
             </div>
             <div className="col-12 col-sm-6 col-xl-3">
-              <KpiCard title="Base stations" value={data.stations.totals.stations} helperText={`${data.stations.totals.tags} etiquetas mapeadas`} icon="📡" />
+              <KpiCard title="Base stations" value={data.stations.totals.stations} helperText={`${data.stations.totals.tags} ativos mapeados`} icon="network" />
             </div>
             <div className="col-12 col-sm-6 col-xl-3">
-              <KpiCard title="Templates" value={data.templates.total} helperText="Modelos em cache operacional" icon="🧩" />
+              <KpiCard title="Templates" value={data.templates.total} helperText="Modelos em cache operacional" icon="catalog" />
             </div>
             <div className="col-12 col-sm-6 col-xl-3">
-              <KpiCard title="Falhas pendentes" value={data.alerts.pending_dead_letters} helperText="Dead-letters aguardando ação" icon="⚠️" />
+              <KpiCard title="Falhas pendentes" value={data.alerts.pending_dead_letters} helperText="Dead-letters aguardando ação" icon="risk" />
             </div>
           </section>
 
@@ -109,8 +109,8 @@ function AdminDashboard() {
 
             <div className="col-12 col-xl-5">
               <article className="app-surface p-4 h-100">
-                <h2 className="h5 mb-1">Saúde operacional ESL</h2>
-                <p className="text-muted small mb-4">Resumo agregado sem sair da central administrativa.</p>
+                <h2 className="h5 mb-1">Saúde operacional LiveLabel</h2>
+                <p className="text-muted small mb-4">Resumo agregado sem sair do cockpit administrativo.</p>
                 <div className="row g-3">
                   <div className="col-6">
                     <div className="mini-stat success">
@@ -171,7 +171,7 @@ function AdminDashboard() {
                 {data.stations.recent.length === 0 ? (
                   <EmptyState
                     title="Nenhuma estação observada"
-                    description="O painel exibirá stations assim que houver catálogo e status sincronizados."
+                    description="O cockpit exibirá stations assim que houver catálogo e status sincronizados."
                   />
                 ) : (
                   <div className="table-responsive">
