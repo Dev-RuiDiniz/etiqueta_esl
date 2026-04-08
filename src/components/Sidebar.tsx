@@ -1,23 +1,34 @@
 import { NavLink } from '../lib/router';
 import { canAccessAdmin, getEffectiveUser } from '../lib/auth';
+import BrandSignature from './BrandSignature';
 
 type SidebarProps = {
   onNavigate?: () => void;
 };
 
 const primaryNavItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { to: '/etiquetas', label: 'Etiquetas', icon: '🏷️' },
-  { to: '/produtos', label: 'Produtos', icon: '📦' },
-  { to: '/atualizacoes/individual', label: 'Atualizações', icon: '🔄' },
-  { to: '/alertas', label: 'Alertas', icon: '🔔' },
-  { to: '/historico', label: 'Histórico', icon: '🕘' }
+  { to: '/dashboard', label: 'Visão Geral', icon: 'overview' },
+  { to: '/etiquetas', label: 'Rede de Etiquetas', icon: 'network' },
+  { to: '/produtos', label: 'Catálogo', icon: 'catalog' },
+  { to: '/atualizacoes/individual', label: 'Atualizações', icon: 'refresh' },
+  { to: '/alertas', label: 'Incidentes', icon: 'alerts' },
+  { to: '/historico', label: 'Rastreabilidade', icon: 'history' }
 ];
 
 const adminNavItems = [
-  { to: '/admin', label: 'Central Admin', icon: '🛠️' },
-  { to: '/admin/usuarios', label: 'Usuários', icon: '👥' }
+  { to: '/admin', label: 'Cockpit Admin', icon: 'admin' },
+  { to: '/admin/usuarios', label: 'Usuários', icon: 'users' }
 ];
+
+function NavIcon({ name }: { name: string }) {
+  return (
+    <span className={`nav-icon nav-icon--${name}`} aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
 
 function Sidebar({ onNavigate }: SidebarProps) {
   const currentUser = getEffectiveUser();
@@ -26,9 +37,11 @@ function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="sidebar-panel d-flex flex-column h-100 p-3 border-end">
       <div className="mb-4 px-2">
-        <div className="sidebar-brand-mark mb-3">ESL</div>
-        <h2 className="h5 mb-1">Central de Operação</h2>
-        <p className="text-muted small mb-0">Monitoramento técnico e administração</p>
+        <BrandSignature theme="dark" showTagline />
+        <div className="sidebar-intro mt-4">
+          <h2 className="h5 mb-1">Cockpit operacional LiveLabel</h2>
+          <p className="text-muted small mb-0">Natureza encontra tecnologia para monitorar etiquetas, estações e operação em tempo real.</p>
+        </div>
       </div>
 
       <nav className="nav nav-pills flex-column gap-1">
@@ -41,7 +54,7 @@ function Sidebar({ onNavigate }: SidebarProps) {
             to={item.to}
             onClick={onNavigate}
           >
-            <span aria-hidden="true">{item.icon}</span>
+            <NavIcon name={item.icon} />
             <span>{item.label}</span>
           </NavLink>
         ))}
@@ -60,13 +73,20 @@ function Sidebar({ onNavigate }: SidebarProps) {
                 to={item.to}
                 onClick={onNavigate}
               >
-                <span aria-hidden="true">{item.icon}</span>
+                <NavIcon name={item.icon} />
                 <span>{item.label}</span>
               </NavLink>
             ))}
           </nav>
         </div>
       ) : null}
+
+      <div className="sidebar-footer mt-auto pt-4">
+        <div className="sidebar-footer-card">
+          <span className="sidebar-footer-eyebrow">Posicionamento</span>
+          <p className="mb-0">Etiquetas Digitais Sustentáveis para varejo com leitura rápida, precisão operacional e confiança técnica.</p>
+        </div>
+      </div>
     </aside>
   );
 }

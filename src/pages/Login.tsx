@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate, useSearchParams } from '../lib/router';
 import { login } from '../services/authService';
+import BrandSignature from '../components/BrandSignature';
 
 function Login() {
   const navigate = useNavigate();
@@ -31,10 +32,13 @@ function Login() {
     <main className="login-shell">
       <section className="login-card card border-0 shadow-lg">
         <div className="card-body p-4 p-md-5">
-          <span className="badge text-bg-primary mb-3">BFF Auth</span>
-          <h1 className="h3 mb-2">Entrar na Central ESL</h1>
+          <BrandSignature align="center" />
+          <div className="login-brand-copy">
+            <span className="badge text-bg-primary mb-3">Secure Access</span>
+          </div>
+          <h1 className="h3 mb-2 text-center">Entrar na plataforma LiveLabel</h1>
           <p className="text-muted mb-4">
-            Use as credenciais do BFF quando `BFF_AUTH_ENABLED=true`. Os perfis `usuario`, `administrador` e `desenvolvedor` recebem experiências diferentes dentro do painel.
+            Use as credenciais do BFF quando `BFF_AUTH_ENABLED=true`. A plataforma combina etiquetas digitais, operação de varejo e uma identidade inspirada em sustentabilidade e conectividade.
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -69,7 +73,7 @@ function Login() {
             </div>
 
             {error ? (
-              <div className="alert alert-danger" role="alert">
+              <div className="alert app-alert app-alert--danger" role="alert">
                 {error}
               </div>
             ) : null}

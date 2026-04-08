@@ -7,9 +7,9 @@ type LoadingStateProps = {
 function LoadingState({ variant = 'skeleton', lines = 4, message = 'Carregando dados...' }: LoadingStateProps) {
   if (variant === 'spinner') {
     return (
-      <div className="card border-0 shadow-sm">
+      <div className="card border-0 shadow-sm app-surface">
         <div className="card-body py-5 d-flex justify-content-center align-items-center gap-3">
-          <div className="spinner-border text-primary" role="status" />
+          <div className="spinner-border loading-spinner-brand" role="status" />
           <span>{message}</span>
         </div>
       </div>
@@ -17,7 +17,7 @@ function LoadingState({ variant = 'skeleton', lines = 4, message = 'Carregando d
   }
 
   return (
-    <div className="card border-0 shadow-sm placeholder-wave" aria-hidden="true">
+    <div className="card border-0 shadow-sm placeholder-wave app-surface" aria-hidden="true">
       <div className="card-body">
         {Array.from({ length: lines }, (_, index) => (
           <p key={`placeholder-${index}`} className="placeholder-glow mb-3">

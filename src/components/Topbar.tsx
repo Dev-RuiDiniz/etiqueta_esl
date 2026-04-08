@@ -3,6 +3,7 @@ import { getEffectiveUser, hasActiveSession } from '../lib/auth';
 import { useNavigate } from '../lib/router';
 import { syncStatus, type Store } from '../mocks';
 import { logout } from '../services/authService';
+import BrandSignature from './BrandSignature';
 
 type TopbarProps = {
   stores: Store[];
@@ -34,8 +35,9 @@ function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarPr
         </button>
 
         <div>
-          <p className="text-muted small mb-1">Operação em tempo real</p>
-          <h1 className="h5 mb-0">{currentStore?.name ?? 'Painel de Etiquetas'}</h1>
+          <BrandSignature compact showTagline={false} />
+          <p className="text-muted small mb-1 mt-2">Operação em tempo real</p>
+          <h1 className="h5 mb-0">{currentStore?.name ?? 'LiveLabel Control Center'}</h1>
         </div>
       </div>
 
@@ -52,7 +54,7 @@ function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarPr
         </label>
 
         <div className="text-end">
-          <span className={`badge rounded-pill ${syncStatus.online ? 'text-bg-success' : 'text-bg-secondary'}`}>
+          <span className={`badge rounded-pill topbar-status-badge ${syncStatus.online ? 'is-online' : 'is-offline'}`}>
             {syncStatus.online ? 'Online' : 'Offline'}
           </span>
           <p className="small text-muted mb-0 mt-1">{syncStatus.lastSyncText}</p>
@@ -61,7 +63,7 @@ function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarPr
         {currentUser ? (
           <div className="topbar-user text-end">
             <p className="small fw-semibold mb-0">{currentUser.email}</p>
-            <p className="small text-muted mb-0 text-capitalize">{currentUser.role}</p>
+            <p className="small text-muted mb-0 text-capitalize">Perfil {currentUser.role}</p>
           </div>
         ) : null}
 
