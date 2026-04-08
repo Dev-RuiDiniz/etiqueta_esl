@@ -3,7 +3,7 @@
 ## 1. Arquitetura alvo
 
 - Frontend React/Vite servido pela Vercel.
-- BFF Node.js executando como Serverless Function (`api/[...route].js`) na Vercel.
+- BFF Node.js executando como Serverless Function (`api/entry.js`) na Vercel, com rewrites em `vercel.json`.
 - Persistência em Postgres do Supabase via `DATABASE_URL`.
 - Agendamentos de jobs operacionais via `vercel.json` + Vercel Cron.
 
@@ -60,7 +60,11 @@ npm run bff:migrate:sqlite-to-postgres -- --sqlite=C:\caminho\etiqueta_esl.sqlit
 
 ## 5. Cron jobs na Vercel
 
-As rotas de cron configuradas em `vercel.json`:
+Agendamento padrão em `vercel.json`:
+
+- `/api/internal/cron/all` (execução consolidada diária)
+
+Rotas manuais disponíveis para diagnóstico/reprocessamento:
 
 - `/api/internal/cron/product-sync`
 - `/api/internal/cron/refresh-dispatch`
