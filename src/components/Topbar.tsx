@@ -37,7 +37,7 @@ function Topbar({ stores, selectedStoreId, onStoreChange, onOpenMenu }: TopbarPr
         <div>
           <BrandSignature compact showTagline={false} />
           <p className="text-muted small mb-1 mt-2">Operação em tempo real</p>
-          <h1 className="h5 mb-0">{currentStore?.name ?? 'LiveLabel Control Center'}</h1>
+          <h1 className="h5 mb-0">{currentStore?.name ?? 'Vhera Tag Control Center'}</h1>
         </div>
       </div>
 

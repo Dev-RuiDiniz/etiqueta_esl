@@ -39,8 +39,8 @@ function Sidebar({ onNavigate }: SidebarProps) {
       <div className="mb-4 px-2">
         <BrandSignature theme="dark" showTagline />
         <div className="sidebar-intro mt-4">
-          <h2 className="h5 mb-1">Cockpit operacional LiveLabel</h2>
-          <p className="text-muted small mb-0">Natureza encontra tecnologia para monitorar etiquetas, estações e operação em tempo real.</p>
+          <h2 className="h5 mb-1">Cockpit operacional Vhera Tag</h2>
+          <p className="text-muted small mb-0">Monitoramento inteligente de etiquetas digitais com precisão operacional e tecnologia industrial.</p>
         </div>
       </div>
 
@@ -84,7 +84,7 @@ function Sidebar({ onNavigate }: SidebarProps) {
       <div className="sidebar-footer mt-auto pt-4">
         <div className="sidebar-footer-card">
           <span className="sidebar-footer-eyebrow">Posicionamento</span>
-          <p className="mb-0">Etiquetas Digitais Sustentáveis para varejo com leitura rápida, precisão operacional e confiança técnica.</p>
+          <p className="mb-0">Etiquetas Digitais industriais para operação logística com precisão técnica e monitoramento em tempo real.</p>
         </div>
       </div>
     </aside>
