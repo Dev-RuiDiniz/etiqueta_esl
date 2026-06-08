@@ -444,7 +444,7 @@ pre,
 }
 
 .dashboard-kpi-card {
-  overflow: hidden;
+  min-height: 100%;
 }
 
 .dashboard-kpi-card .card-body {
