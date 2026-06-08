@@ -13,21 +13,21 @@
 
   /* Legacy LiveLabel Colors (preserved for transition) */
   --color-brand-green: #1b7a56;
-  --color-brand-blue: #1a6fa8;
+  --color-brand-blue: #6b7280;
   --color-brand-green-mid: #24a877;
-  --color-brand-blue-light: #3ab8f5;
+  --color-brand-blue-light: #9ca3af;
   --green-50: #d4f0e5;
   --green-200: #87d9ba;
   --green-400: #24a877;
   --green-600: #1b7a56;
   --green-800: #0f4a36;
   --green-900: #0a3d2b;
-  --blue-50: #d0e8f8;
-  --blue-200: #7ac2ef;
-  --blue-400: #3ab8f5;
-  --blue-600: #1a6fa8;
-  --blue-800: #0d4e78;
-  --blue-900: #082e48;
+  --blue-50: #f3f4f6;
+  --blue-200: #d1d5db;
+  --blue-400: #9ca3af;
+  --blue-600: #6b7280;
+  --blue-800: #4b5563;
+  --blue-900: #374151;
 
   /* Operational Status Colors (preserved - distinct from brand) */
   --color-status-online: #1db070;
