@@ -1,20 +1,22 @@
-# LiveLabel — Etiquetas Digitais Sustentáveis
+# Vhera Tag — Etiquetas Digitais
 
-Plataforma LiveLabel para operação de etiquetas digitais sustentáveis, com frontend React + Vite, BFF Node.js e integração com a API ESL do fornecedor. O nome técnico do repositório continua `etiqueta_esl`, mas a experiência pública do produto, a interface e a documentação funcional adotam a marca `LiveLabel`.
+Plataforma Vhera Tag para operação de etiquetas digitais industriais, com frontend React + Vite, BFF Node.js e integração com a API ESL do fornecedor. O nome técnico do repositório continua `etiqueta_esl`, mas a experiência pública do produto, a interface e a documentação funcional adotam a marca `Vhera Tag`.
 
 ## 1. Branding e design system
 
-- Marca pública: `LiveLabel`
-- Assinatura: `Etiquetas Digitais Sustentáveis`
-- Direção visual: `light + dark shell`, com shell escuro, superfícies claras e linguagem operacional B2B.
+- Marca pública: `Vhera Tag`
+- Assinatura: `Etiquetas Digitais`
+- Direção visual: industrial, técnica e operacional, com predominância de amarelo/laranja e preto
 - Fontes oficiais: `Plus Jakarta Sans` e `JetBrains Mono`
-- Paleta principal: verde e azul alinhados ao logo oficial
+- Paleta principal: amarelo/laranja da marca com contraste preto
 
 Assets versionados no repositório:
 
-- Logo oficial: `src/assets/brand/livelabel-logo.jpg`
-- Favicon derivado do logo: `public/livelabel-logo.jpg`
-- Guia de design incorporado: `docs/brand/livelabel-design-system.md`
+- Logo oficial: `src/assets/brand/vhera-tag-logo.png`
+- Ícone compacto: `src/assets/brand/vhera-tag-icon.png`
+- Favicon: `public/vhera-tag-favicon.png`
+- Guia de design: `docs/brand/vhera-tag-design-system.md`
+- Roadmap de integração: `roadmap-vhera-tag-sdd-tdd.md`
 
 ## 2. O que o sistema faz
 
@@ -47,7 +49,7 @@ F --> E --> D --> C --> B --> A
 ### Frontend
 
 - Stack: React 18 + Vite 6 + TypeScript.
-- Tema e tokens centralizados em `src/styles/theme.css`, refletindo o design system LiveLabel.
+- Tema e tokens centralizados em `src/styles/theme.css`, refletindo o design system Vhera Tag.
 - Camada ESL em `src/services/esl/*`.
 - Camada administrativa em `src/services/adminService.ts`.
 - Tipos de contrato em `src/types/esl.ts`.
