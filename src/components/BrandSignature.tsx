@@ -1,4 +1,4 @@
-import liveLabelLogo from '../assets/brand/livelabel-logo.jpg';
+import vheraTagLogo from '../assets/brand/vhera-tag-logo.png';
 
 type BrandSignatureProps = {
   compact?: boolean;
@@ -24,13 +24,13 @@ function BrandSignature({
 
   return (
     <div className={className}>
-      <img src={liveLabelLogo} alt="LiveLabel" className="brand-signature__logo" />
+      <img src={vheraTagLogo} alt="Vhera Tag - Logo" className="brand-signature__logo" />
       <div className="brand-signature__content">
         <div className="brand-signature__name-wrap">
-          <span className="brand-signature__name">LiveLabel</span>
+          <span className="brand-signature__name">Vhera Tag</span>
           <span className="brand-signature__chip">ESL</span>
         </div>
-        {showTagline ? <p className="brand-signature__tagline">Etiquetas Digitais Sustentáveis</p> : null}
+        {showTagline ? <p className="brand-signature__tagline">Etiquetas Digitais</p> : null}
       </div>
     </div>
   );
