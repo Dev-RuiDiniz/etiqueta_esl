@@ -36,9 +36,9 @@ function Login() {
           <div className="login-brand-copy">
             <span className="badge text-bg-primary mb-3">Secure Access</span>
           </div>
-          <h1 className="h3 mb-2 text-center">Entrar na plataforma LiveLabel</h1>
+          <h1 className="h3 mb-2 text-center">Entrar na plataforma Vhera Tag</h1>
           <p className="text-muted mb-4">
-            Use as credenciais do BFF quando `BFF_AUTH_ENABLED=true`. A plataforma combina etiquetas digitais, operação de varejo e uma identidade inspirada em sustentabilidade e conectividade.
+            Use as credenciais do BFF quando `BFF_AUTH_ENABLED=true`. A plataforma combina etiquetas digitais industriais, operação logística e monitoramento em tempo real com precisão técnica.
           </p>
 
           <form onSubmit={handleSubmit}>
